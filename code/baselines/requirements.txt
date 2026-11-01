@@ -1,0 +1,9 @@
+# Verified with Python 3.9.23, torch 2.8.0+cu128, numpy 1.26.4 (CUDA 12.8).
+torch>=2.4        # nn.RMSNorm (Mamba2 model) needs torch >= 2.4
+numpy>=1.26,<2
+
+# Optional, only for the Mamba2 baseline (CUDA GPU required). Verified versions:
+#   mamba_ssm==2.3.1
+#   causal_conv1d==1.6.1
+#   (triton 3.4.0 came with torch 2.8.0)
+# Install with: pip install causal_conv1d==1.6.1 mamba_ssm==2.3.1 --no-build-isolation

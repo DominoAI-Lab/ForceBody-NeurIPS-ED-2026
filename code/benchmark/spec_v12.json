@@ -1,0 +1,123 @@
+{
+ "spec_version": "forcebody-bench-1.2.0",
+ "dataset_version": "ForceBody 1.3.0 (benchmark inputs, labels, masks and splits identical to 1.2.0 / 1.2.1; 40 Hamner2013 trial keys renamed in 1.3.0)",
+ "date": "2026-09-30",
+ "decisions": {
+  "D0prime": "pose_source selects the pose set (pass0 | pass2). Default pass0. pass2 is allowed but its results carry leaky_input=True and are excluded from the official tables.",
+  "D21": "Labels are normalized by mass_kg_dynamics; model inputs use mass_kg (recorded).",
+  "D24": "Paper Table 3 is not retrained; footnote only. Its AddB row used dynamics-pass (pass 2) kinematics as input.",
+  "D25": "Paper Tables 4/5/15 keep their numbers with a footnote (not retrained in the paper). Baselines retrained on dataset 1.2.1 with the paper code are listed in BENCHMARK.md (Results).",
+  "D26": "Splits are split_addb (train/test, person level) and split_addb_val (validation persons drawn from the split_addb train persons)."
+ },
+ "pose_source": {
+  "argument": "--pose_source",
+  "default": "pass0",
+  "allowed": ["pass0", "kin", "pass2", "dyn"],
+  "official": ["pass0", "kin"],
+  "leaky": ["pass2", "dyn"],
+  "loader": "forcebody_io.load_trial(npz_path, pose_source)",
+  "leaky_rule": "pass2/dyn inputs: result json leaky_input=true, official_table_eligible=false"
+ },
+ "leakage": {
+  "forbidden_inputs": "forcebody_io.LEAKY_INPUT_FIELDS",
+  "rule": "allowlist: model inputs are only the benchmark inputs below (tasks.*.inputs), all derived from the pass-0 pose set, betas and the recorded mass / height (forcebody_io.ALLOWED_INPUT_FIELDS for the underlying fields). LEAKY_INPUT_FIELDS is a denylist safety net",
+  "forbidden_inputs_list": ["poses_dyn", "trans_dyn", "joints_dyn", "addb_joints_dyn", "q_gt", "qd_gt", "qdd_gt", "tau_*", "mu_tau", "sigma_tau", "percentiles", "grf*", "cop*", "contact_*", "grf_valid_mask", "mass_kg_grf", "mass_dyn_scale", "mass_kg_dynamics*", "cadence_spm_grf", "stride_time_s_med", "duty_factor_*", "support_side*", "caption_support_side", "floor_height_m", "speed_belt_grf_mps", "mc_*", "eval_*", "t2m_*", "s8b_*", "qc_*", "force_label_usable*", "torque_label_usable", "poses_dyn_usable*", "kin_frame_ok", "gait_events"],
+  "enforcement": "build_bench_cache_v12.check_inputs raises ValueError for any input on the denylist and for any input that is not a benchmark input (allowlist)"
+ },
+ "splits": {
+  "column": "split_addb_val (manifest.csv)",
+  "values": {"train": "split_addb == train and not a validation person", "val": "split_addb_val == val (subset of the split_addb train persons)", "test": "split_addb == test"},
+  "unit": "person",
+  "persons_file": "split_addb_val_persons.csv (build input, metadata/)",
+  "protocol": "Select checkpoints and hyperparameters on val only. Score test once."
+ },
+ "constants": {
+  "G_mps2": {"value": 9.81, "source": "forces_lib.py:70 and qc_v12.py:45 of the v1.2 build (G = 9.81, the constant of build_v11.py and the v1.1 QC)"}
+ },
+ "tasks": {
+  "T-tau": {
+   "description": "Per-frame joint torques from motion.",
+   "inputs": {
+    "required": ["poses", "trans_vel", "betas", "mass_kg", "height_m"],
+    "optional": ["q", "qd", "qdd", "joints", "addb_joints"],
+    "notes": "poses [T,46] of the chosen pose source; trans_vel [T,3] = numpy.gradient(trans, 1/fps_true_grid) within the trial (m/s); betas [10] per person; mass_kg = recorded mass (D21); height_m recorded. Optional q/qd/qdd = q_kin/qd_kin/qdd_kin for pass0 (q_gt family for pass2, i.e. leaky). Models may derive further features (pose velocity etc.) from these inputs within a trial."
+   },
+   "label": {
+    "field": "tau_selfconsistent / mass_kg_dynamics",
+    "unit": "N m/kg (rotational DOFs)",
+    "frame": "addb_lab (OpenSim Rajagopal DOF sign conventions, dof_names_opensim)",
+    "scored_dofs": "direct_dof_mask (20 DOFs: hip x3, knee, ankle, mtp per side; elbow, radioulnar, wrist x2 per side)"
+   },
+   "mask": "eval_tau_frame_ok AND eval_torque_trial_ok (eval_tau_frame_ok = tau_frame_ok AND kin_frame_ok; eval_torque_trial_ok excludes force-unusable, single-channel, duplicate / Han2023 trimmed-copy, static / transition / pause, root-residual > 0.1 BW and qc_mass_dyn_vs_grf_flag trials)",
+   "dof_groups": {
+    "all": {"idx": [6, 7, 8, 9, 10, 12, 13, 14, 15, 16, 17, 19, 26, 27, 28, 29, 33, 34, 35, 36], "note": "20 direct DOFs (= paper Table 4 'All joints'; the paper text said 18)"},
+    "all_no_wrist": {"idx": [6, 7, 8, 9, 10, 12, 13, 14, 15, 16, 17, 19, 26, 27, 33, 34], "note": "16 DOFs, wrist (radius_hand_*) removed"},
+    "lower": {"idx": [6, 7, 8, 9, 10, 12, 13, 14, 15, 16, 17, 19], "note": "hip, knee, ankle, mtp (12)"},
+    "upper": {"idx": [26, 27, 28, 29, 33, 34, 35, 36], "note": "elbow, radioulnar, wrist (8)"},
+    "upper_no_wrist": {"idx": [26, 27, 33, 34], "note": "elbow, radioulnar (4)"}
+   },
+   "headline_group": "all",
+   "prediction_format": "npz, one key per trial_uid, float array [T,37] in N m/kg (columns in dof_names order; only scored DOFs are read; must be finite on scored frames)"
+  },
+  "T-GRF": {
+   "description": "Per-frame ground reaction force of each foot from motion.",
+   "inputs": {"required": ["poses", "trans_vel", "betas", "mass_kg", "height_m"], "optional": ["q", "qd", "qdd", "joints", "addb_joints"]},
+   "label": {
+    "field": "grf_aligned[:, 0:2] / (mass_kg_dynamics * G)",
+    "unit": "body weight (BW)",
+    "frame": "skel_world (flip_xz of addb_lab), y up, gravity -y",
+    "contacts": "index 0 = right foot (calcn_r), 1 = left foot (calcn_l). The Falisse2017 chair channel (contact 2, pelvis) is not a target.",
+    "channels": ["r_x", "r_y", "r_z", "l_x", "l_y", "l_z"]
+   },
+   "grm_definition": "The ground reaction moment (GRM) in ForceBody is contact_torque (addb_lab) / contact_torque_aligned (skel_world): the free moment per contact, in N m, acting at the centre of pressure (cop / cop_aligned_foot). The resultant moment of a foot about a point p is (cop - p) x grf + contact_torque. GRM and CoP are not scored in T-GRF v1.2 (Carter2023 running free moments are about five times Hamner2013; the README advises against using contact_torque as a feature). Paper Table 3 GRF was the two-foot sum; the scorer reports that as the secondary group 'sum_feet'.",
+   "mask": "eval_grf_frame_ok AND eval_grf_trial_ok (eval_grf_frame_ok = grf_frame_ok AND kin_frame_ok; eval_grf_trial_ok excludes force-unusable, single-channel, duplicate / Han2023 trimmed-copy, static / transition / pause and qc_mass_dyn_vs_grf_flag trials). grf_valid_mask covers measured frames only; on Carter2023 running it excludes the flight frames, so T-GRF on running is scored on stance frames",
+   "channel_groups": {
+    "all": {"idx": [0, 1, 2, 3, 4, 5], "note": "both feet, 3 components"},
+    "vertical": {"idx": [1, 4]},
+    "horizontal": {"idx": [0, 2, 3, 5]},
+    "sum_feet": {"idx": "derived: right + left per component (3 channels)", "note": "paper Table 3 style (two-foot total)"}
+   },
+   "headline_group": "all",
+   "prediction_format": "npz, one key per trial_uid, float array [T,2,3] in BW (skel_world, right foot first; must be finite on scored frames)"
+  }
+ },
+ "metrics": {
+  "per_channel": {
+   "rmse": "sqrt(mean over scored frames of (pred - label)^2), in label units (per-frame, per-kg or BW)",
+   "mae": "mean over scored frames of |pred - label|",
+   "pcc": "Pearson r over the pooled scored frames of the channel. 0 when the prediction variance is 0 and the label variance is not (a constant prediction scores 0); undefined (NaN, left out of the group mean, counted) only when the label variance is 0"
+  },
+  "pcc_zero_variance": {
+   "rel_tol": 1e-10,
+   "rule": "a variance counts as 0 when sum((x - mean)^2) <= rel_tol * sum(x^2) (float64 cancellation of a constant series)",
+   "source": "OURS (numerical tolerance, S19 F7)"
+  },
+  "group_value": "mean over the channels of the group (as in paper Table 4)",
+  "aggregations": {
+   "pooled": "all scored frames of the healthy stratum pooled (headline)",
+   "study_macro": "per-study pooled metric, then the unweighted mean over studies (healthy stratum)",
+   "per_study": "pooled within each study (healthy stratum)",
+   "per_activity": "pooled within each activity_recovered class (healthy stratum)",
+   "pathological": "eval_stratum == pathological (Fregly2012 TKA, Li2021 stroke; D18): pooled and per study, reported separately, never mixed into the headline",
+   "all_strata": "healthy + pathological pooled, for reference only"
+  },
+  "bootstrap": {
+   "unit": "person (resample persons with replacement; all scored frames of a drawn person enter)",
+   "applies_to": ["pooled", "study_macro (persons resampled within each study)"],
+   "n_boot": 1000,
+   "ci": [2.5, 97.5],
+   "seed": 0,
+   "source": "OURS (user decision U4, 2026-09-30): 1000 person-level resamples, percentile interval, seed 0. No citation is claimed for these values."
+  },
+  "paper_style_reference": {
+   "function": "score_v12.paper_style_metrics == eval_table4.metrics_subset (paper package 20260928_torque_benchmark_repro/ForceBody_torque_benchmark/eval_table4.py)",
+   "definition": "per DOF: RMSE and MAE of N m errors over GRF-valid frames divided by the mean body mass of those frames, PCC per DOF, averaged over the DOF group. Used only to show that the scorer reproduces the paper numbers on the paper inputs; not the v1.2 metric.",
+   "gate": "max abs difference <= 1e-6 on the paper test cache and the verify_run checkpoints"
+  }
+ },
+ "results_json": {
+  "required_keys": ["spec_version", "task", "split", "pose_source", "leaky_input", "official_table_eligible", "n_trials", "n_persons", "n_frames", "results"],
+  "official_table_eligible": "pose_source in (pass0, kin) AND split == test AND spec_version matches"
+ },
+ "paper_numbers": "Paper Tables 3, 4, 5 and 15 were computed on ForceBody 1.0.0 (reviewed build) and are not v1.2 benchmark numbers. Tables 4, 5 and 15 (D25): v1 torque labels, P80 subset, validation set == test set, one seed. Table 3 (D24): the AddB row took AddB dynamics-pass (pass 2) kinematics as input (force-label leakage), and its two rows differ in model implementation, optimizer, training subset and validation."
+}
