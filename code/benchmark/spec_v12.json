@@ -5,8 +5,8 @@
  "decisions": {
   "D0prime": "pose_source selects the pose set (pass0 | pass2). Default pass0. pass2 is allowed but its results carry leaky_input=True and are excluded from the official tables.",
   "D21": "Labels are normalized by mass_kg_dynamics; model inputs use mass_kg (recorded).",
-  "D24": "Paper Table 3 is not retrained; footnote only. Its AddB row used dynamics-pass (pass 2) kinematics as input.",
-  "D25": "Paper Tables 4/5/15 keep their numbers with a footnote (not retrained in the paper). Baselines retrained on dataset 1.2.1 with the paper code are listed in BENCHMARK.md (Results).",
+  "D24": "Paper Table 3 (camera-ready): the ForceBody rows are the baselines retrained on dataset 1.2.1 over three seeds. The two AddB rows are taken from the reviewed build as a reference, not a matched comparison. They used dynamics-pass (pass 2) kinematics as input.",
+  "D25": "Paper Tables 4, 5, 14 and 15 (camera-ready) are the baselines retrained on dataset 1.2.1 with the paper code, mean and standard deviation over three seeds, aggregation all_strata. BENCHMARK.md (Results) lists the same runs.",
   "D26": "Splits are split_addb (train/test, person level) and split_addb_val (validation persons drawn from the split_addb train persons)."
  },
  "pose_source": {
@@ -50,7 +50,7 @@
    },
    "mask": "eval_tau_frame_ok AND eval_torque_trial_ok (eval_tau_frame_ok = tau_frame_ok AND kin_frame_ok; eval_torque_trial_ok excludes force-unusable, single-channel, duplicate / Han2023 trimmed-copy, static / transition / pause, root-residual > 0.1 BW and qc_mass_dyn_vs_grf_flag trials)",
    "dof_groups": {
-    "all": {"idx": [6, 7, 8, 9, 10, 12, 13, 14, 15, 16, 17, 19, 26, 27, 28, 29, 33, 34, 35, 36], "note": "20 direct DOFs (= paper Table 4 'All joints'; the paper text said 18)"},
+    "all": {"idx": [6, 7, 8, 9, 10, 12, 13, 14, 15, 16, 17, 19, 26, 27, 28, 29, 33, 34, 35, 36], "note": "20 direct DOFs (= paper Table 4 'All joints')"},
     "all_no_wrist": {"idx": [6, 7, 8, 9, 10, 12, 13, 14, 15, 16, 17, 19, 26, 27, 33, 34], "note": "16 DOFs, wrist (radius_hand_*) removed"},
     "lower": {"idx": [6, 7, 8, 9, 10, 12, 13, 14, 15, 16, 17, 19], "note": "hip, knee, ankle, mtp (12)"},
     "upper": {"idx": [26, 27, 28, 29, 33, 34, 35, 36], "note": "elbow, radioulnar, wrist (8)"},
@@ -69,13 +69,13 @@
     "contacts": "index 0 = right foot (calcn_r), 1 = left foot (calcn_l). The Falisse2017 chair channel (contact 2, pelvis) is not a target.",
     "channels": ["r_x", "r_y", "r_z", "l_x", "l_y", "l_z"]
    },
-   "grm_definition": "The ground reaction moment (GRM) in ForceBody is contact_torque (addb_lab) / contact_torque_aligned (skel_world): the free moment per contact, in N m, acting at the centre of pressure (cop / cop_aligned_foot). The resultant moment of a foot about a point p is (cop - p) x grf + contact_torque. GRM and CoP are not scored in T-GRF v1.2 (Carter2023 running free moments are about five times Hamner2013; the README advises against using contact_torque as a feature). Paper Table 3 GRF was the two-foot sum; the scorer reports that as the secondary group 'sum_feet'.",
+   "grm_definition": "The ground reaction moment (GRM) in ForceBody is contact_torque (addb_lab) / contact_torque_aligned (skel_world): the free moment per contact, in N m, acting at the centre of pressure (cop / cop_aligned_foot). The resultant moment of a foot about a point p is (cop - p) x grf + contact_torque. GRM and CoP are not scored in T-GRF v1.2 (Carter2023 running free moments are about five times Hamner2013). Paper Table 3 GRF is the sum over the two feet of the 3D error norm in N/kg (grf_paper_metric in code/baselines/aggregate.py). The secondary group 'sum_feet' scores the two-foot total force, a different quantity.",
    "mask": "eval_grf_frame_ok AND eval_grf_trial_ok (eval_grf_frame_ok = grf_frame_ok AND kin_frame_ok; eval_grf_trial_ok excludes force-unusable, single-channel, duplicate / Han2023 trimmed-copy, static / transition / pause and qc_mass_dyn_vs_grf_flag trials). grf_valid_mask covers measured frames only; on Carter2023 running it excludes the flight frames, so T-GRF on running is scored on stance frames",
    "channel_groups": {
     "all": {"idx": [0, 1, 2, 3, 4, 5], "note": "both feet, 3 components"},
     "vertical": {"idx": [1, 4]},
     "horizontal": {"idx": [0, 2, 3, 5]},
-    "sum_feet": {"idx": "derived: right + left per component (3 channels)", "note": "paper Table 3 style (two-foot total)"}
+    "sum_feet": {"idx": "derived: right + left per component (3 channels)", "note": "two-foot total force (right + left per component)"}
    },
    "headline_group": "all",
    "prediction_format": "npz, one key per trial_uid, float array [T,2,3] in BW (skel_world, right foot first; must be finite on scored frames)"
@@ -111,7 +111,7 @@
   },
   "paper_style_reference": {
    "function": "score_v12.paper_style_metrics == eval_table4.metrics_subset (paper package 20260928_torque_benchmark_repro/ForceBody_torque_benchmark/eval_table4.py)",
-   "definition": "per DOF: RMSE and MAE of N m errors over GRF-valid frames divided by the mean body mass of those frames, PCC per DOF, averaged over the DOF group. Used only to show that the scorer reproduces the paper numbers on the paper inputs; not the v1.2 metric.",
+   "definition": "per DOF: RMSE and MAE of N m errors over GRF-valid frames divided by the mean body mass of those frames, PCC per DOF, averaged over the DOF group. Used only to show that the scorer reproduces the submitted-paper numbers on the submitted-paper inputs; not the v1.2 metric.",
    "gate": "max abs difference <= 1e-6 on the paper test cache and the verify_run checkpoints"
   }
  },
@@ -119,5 +119,5 @@
   "required_keys": ["spec_version", "task", "split", "pose_source", "leaky_input", "official_table_eligible", "n_trials", "n_persons", "n_frames", "results"],
   "official_table_eligible": "pose_source in (pass0, kin) AND split == test AND spec_version matches"
  },
- "paper_numbers": "Paper Tables 3, 4, 5 and 15 were computed on ForceBody 1.0.0 (reviewed build) and are not v1.2 benchmark numbers. Tables 4, 5 and 15 (D25): v1 torque labels, P80 subset, validation set == test set, one seed. Table 3 (D24): the AddB row took AddB dynamics-pass (pass 2) kinematics as input (force-label leakage), and its two rows differ in model implementation, optimizer, training subset and validation."
+ "paper_numbers": "The camera-ready paper Tables 3 (ForceBody rows), 4, 5, 14 and 15 report the baselines retrained on dataset 1.2.1 (benchmark data identical in 1.3.0) as the mean and standard deviation over three seeds, aggregation all_strata, checkpoints selected on the 12 validation persons, the 19 test persons scored once. The two AddB rows of Table 3 (D24) come from the reviewed build and used AddB dynamics-pass (pass 2) kinematics as input (force-label leakage). The submitted version of the paper used ForceBody 1.0.0 (reviewed build) with v1 torque labels, the P80 subset, validation set == test set and one seed. Those numbers are not v1.2 benchmark numbers."
 }

@@ -1,0 +1,14 @@
+# visualize.py (ForceBody renderer): pip install -r requirements_visualize.txt
+# Reading the trial files needs only numpy (forcebody_io.py).
+numpy
+scipy
+torch
+pyrender
+trimesh
+PyOpenGL
+imageio[ffmpeg]
+Pillow
+# SKEL body model package (public). Pinned to the SKEL commit used to build ForceBody and to test visualize.py.
+# The SKEL model files (skel_male.pkl, skel_female.pkl, version 1.1.1) are not on pip. Download them from
+# https://skel.is.tue.mpg.de/ and pass the folder with --skel_model or SKEL_MODEL_PATH.
+skel @ git+https://github.com/MarilynKeller/SKEL.git@c32cf16581295bff19399379efe5b776d707cd95

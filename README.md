@@ -10,7 +10,6 @@ Joonwoo Kwon<sup>1</sup>, Yufei Zhang<sup>2</sup>, Xiaoming Liu<sup>3</sup>, Zij
 
 <img src="assets/divider.png" width="100%" height="4">
 
-[![Paper](https://img.shields.io/badge/Paper-NeurIPS%202026-b31b1b.svg)](#) <!-- TODO: paper link (OpenReview / proceedings) -->
 [![Dataset](https://img.shields.io/badge/Dataset-Hugging%20Face-yellow.svg)](https://huggingface.co/datasets/kwonjoon/ForceBody)
 [![Code License: MIT](https://img.shields.io/badge/Code-MIT-blue.svg)](LICENSE)
 [![Data License: CC BY-NC 4.0](https://img.shields.io/badge/Data-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
@@ -84,13 +83,13 @@ One file per trial, `trials/<study>/S<NN>/<trial_uid>.npz`. The main fields are 
 
 Trial-level metadata (study, activity, protocol, person, captions and quality flags) is in each file and in `manifest.csv`.
 
-**Read before training.** Masked values are not NaN, so always apply the frame masks. Normalize GRF, torque and σ<sub>τ</sub> by `mass_kg_dynamics` only. A model that predicts forces or torques must take its motion input from the kinematics-pass pose set (`pose_source="pass0"`). The dynamics-pass poses were adjusted by AddBiomechanics to agree with the measured forces, so they leak force information. The dataset README explains the leakage policy, the quality masks and the known issues in detail.
+**Read before training.** Masked values are not NaN, so always apply the frame masks. Normalize GRF, torque and σ<sub>τ</sub> by `mass_kg_dynamics` only. A model that predicts forces or torques must take its motion input from the kinematics-pass pose set (`pose_source="pass0"`). The dynamics-pass poses were adjusted by AddBiomechanics to agree with the measured forces, so they leak force information. [DETAILS.md](https://huggingface.co/datasets/kwonjoon/ForceBody/blob/main/DETAILS.md) on Hugging Face explains the leakage policy, the quality masks and the known issues in detail.
 
 ## Quickstart
 
 ### 0. Download the SKEL model (required)
 
-The trial files store SKEL parameters (`poses`, `betas`, `trans`), not meshes. Register and download the SKEL model from the [SKEL website](https://skel.is.tue.mpg.de/) under its non-commercial license. ForceBody does not redistribute it. You need it to build meshes or joints and to run `visualize.py`. The force, torque and uncertainty arrays can be read without it.
+The trial files store SKEL parameters (`poses`, `betas`, `trans`), not meshes. Register and download the SKEL model from the [SKEL website](https://skel.is.tue.mpg.de/) under its non-commercial license. ForceBody does not redistribute it. You need it to build meshes and to run `visualize.py`. The joint positions (`joints`), force, torque and uncertainty arrays can be read without it.
 
 ### 1. Download the data
 
@@ -99,8 +98,11 @@ hf download kwonjoon/ForceBody --repo-type dataset --local-dir ForceBody
 ```
 
 The dataset is about 46 GB (10,386 trial files plus tables and subject models), hosted at https://huggingface.co/datasets/kwonjoon/ForceBody.
+Croissant metadata with Responsible AI fields: [croissant.json](https://huggingface.co/datasets/kwonjoon/ForceBody/resolve/main/croissant.json).
 
 ### 2. Install the loader
+
+Run this step in the same folder as step 1, so that `ForceBody/` and the repository are side by side.
 
 ```bash
 git clone https://github.com/DominoAI-Lab/ForceBody-NeurIPS-ED-2026.git
@@ -110,12 +112,12 @@ pip install numpy
 
 ### 3. Load a trial
 
-`forcebody_io.py` needs only NumPy.
+`forcebody_io.py` needs only NumPy. Run it from `ForceBody-NeurIPS-ED-2026/code/`.
 
 ```python
 import forcebody_io as fio
 
-d = fio.load_trial("ForceBody/trials/Moore2015/S10/Moore2015_S10_walk_014.npz", pose_source="pass0")
+d = fio.load_trial("../../ForceBody/trials/Moore2015/S10/Moore2015_S10_walk_014.npz", pose_source="pass0")
 
 poses   = d["poses"]               # [T, 46] SKEL pose (rad), kinematics-pass fit
 trans   = d["trans"]               # [T, 3]  SKEL root translation (m)
@@ -125,7 +127,7 @@ tau     = d["tau_selfconsistent"]  # [T, 37] joint torque (N m), OpenSim DOF ord
 sigma   = d["sigma_tau"]           # [T, 37] torque uncertainty (N m)
 m       = float(d["mass_kg_dynamics"])
 
-ok = d["mc_frame_ok"]              # frames where tau and sigma_tau are usable
+ok = d["mc_frame_ok"] & bool(d["torque_label_usable"])   # frames where tau and sigma_tau are usable
 tau_nmkg, sigma_nmkg = tau[ok] / m, sigma[ok] / m
 ```
 
@@ -134,12 +136,14 @@ tau_nmkg, sigma_nmkg = tau[ok] / m, sigma[ok] / m
 ### 4. Visualize
 
 ```bash
-python visualize.py --npz ForceBody/trials/Moore2015/S10/Moore2015_S10_walk_014.npz --mode png --pose_source pass0
-python visualize.py --npz ForceBody/trials/Moore2015/S10/Moore2015_S10_walk_014.npz --mode mp4 --pose_source pass2
+pip install -r requirements_visualize.txt
+export SKEL_MODEL_PATH=/path/to/skel_models   # folder with skel_male.pkl and skel_female.pkl from step 0
+python visualize.py --npz ../../ForceBody/trials/Moore2015/S10/Moore2015_S10_walk_014.npz --mode png --pose_source pass0
+python visualize.py --npz ../../ForceBody/trials/Moore2015/S10/Moore2015_S10_walk_014.npz --mode mp4 --pose_source pass2
 ```
 
-Options are `--out`, `--fps` (default 20) and `--max-frames` (default 150). The renderer draws the SKEL body coloured by `tau_selfconsistent` and GRF arrows at the centre of pressure.
-`visualize.py` needs the SKEL model files, an EGL renderer and the addb2skel rendering utilities. **TODO.** The addb2skel package is not yet public, so `visualize.py` does not run from a clean checkout. Reading the data does not need it.
+Options are `--skel_model` (default `$SKEL_MODEL_PATH`), `--out`, `--fps` (default 20) and `--max-frames` (default 150). The renderer draws the SKEL body coloured by `tau_selfconsistent` and GRF arrows at the centre of pressure.
+Rendering needs PyTorch, pyrender and the SKEL package and model. See `code/VISUALIZATION.md`.
 
 ## Benchmark
 
@@ -178,9 +182,9 @@ The same Transformer is fine-tuned with one loss weight per training window comp
 | ForceBody | SKEL | MLP | 1.165 ± 0.011 | 0.168 ± 0.009 |
 | ForceBody | SKEL | GLN | 1.136 ± 0.040 | 0.149 ± 0.011 |
 
-The AddBiomechanics rows are copied from paper Table 3 and use the Rajagopal body model. The comparison is architecture-matched. GRM values for ForceBody are not part of the official benchmark scorer. <!-- TODO: state the exact origin of the AddB rows (AddB paper values or our rerun) as the paper does. -->
+The AddBiomechanics rows are copied from paper Table 3 and use the Rajagopal body model. Both datasets use the same two architectures. These rows are taken from the reviewed build of the dataset, so they serve as a reference rather than a matched comparison. GRM values for ForceBody are not part of the official benchmark scorer.
 
-The benchmark card (`benchmark/BENCHMARK.md`), the machine-readable spec (`benchmark/spec_v12.json`), the cache builder and the reference scorer ship with the dataset release. BENCHMARK.md reports single-seed rows with person-level bootstrap intervals on the healthy test stratum, so its numbers differ slightly from the three-seed table above.
+The benchmark card (`code/benchmark/BENCHMARK.md`), the machine-readable spec (`code/benchmark/spec_v12.json`), the cache builder and the reference scorer are in `code/benchmark/` of this repository. BENCHMARK.md lists the same three-seed runs for every model, with the paper aggregation (all test strata) next to the benchmark headline (healthy test stratum), and the pathological stratum separately.
 
 ## Dataset composition
 
@@ -212,10 +216,11 @@ The data are imbalanced. Running and walking make up 93.5% of the trials, and Ca
 |---|---|
 | `README.md`, `LICENSE`, `assets/` | this page |
 | `code/forcebody_io.py` | data loader |
-| `code/visualize.py`, `code/VISUALIZATION.md` | renderer (needs the SKEL model and the addb2skel render utilities, which are not public) |
+| `code/visualize.py`, `code/skel_render.py`, `code/requirements_visualize.txt`, `code/VISUALIZATION.md` | renderer (needs PyTorch, pyrender and the SKEL package and model) |
 | `code/benchmark/` | benchmark card, spec, cache builder, reference scorer |
 | `code/baselines/` | baseline training code: cache build, GRF/GRM and torque training, uncertainty-weighted finetuning, inference, scoring, aggregation (see `code/baselines/README.md`) |
 | SKEL fitting pipeline | not released |
+| Monte Carlo uncertainty pipeline | not released (Section 3.2 and Appendix C of the paper describe the procedure) |
 
 
 ## License
@@ -237,26 +242,38 @@ The data are imbalanced. Running and walking make up 93.5% of the trials, and Ca
 }
 ```
 
-<!-- TODO: add pages / url / OpenReview id once the proceedings are out. -->
-
 Please also cite AddBiomechanics, SKEL and the source studies you use.
 
 ```bibtex
 @inproceedings{werling2024addbiomechanics,
   title     = {AddBiomechanics Dataset: Capturing the Physics of Human Motion at Scale},
+  author    = {Werling, Keenon and Kaneda, Janelle and Tan, Tian and Agarwal, Rishi and Skov, Six and Van Wouwe, Tom and Uhlrich, Scott and Bianco, Nicholas and Ong, Carmichael and Falisse, Antoine and Sapkota, Shardul and Chandra, Aidan and Carter, Joshua and Preatoni, Ezio and Fregly, Benjamin and Hicks, Jennifer and Delp, Scott and Liu, C. Karen},
   booktitle = {ECCV},
+  pages     = {490--508},
   year      = {2024},
   doi       = {10.1007/978-3-031-73223-2_27}
 }
 @article{werling2023addbiomechanics,
   title   = {AddBiomechanics: Automating model scaling, inverse kinematics, and inverse dynamics from human motion data through sequential optimization},
+  author  = {Werling, Keenon and Bianco, Nicholas A. and Raitor, Michael and Stingel, Jon and Hicks, Jennifer L. and Collins, Steven H. and Delp, Scott L. and Liu, C. Karen},
   journal = {PLOS ONE},
+  volume  = {18},
+  number  = {11},
+  pages   = {e0295152},
   year    = {2023},
   doi     = {10.1371/journal.pone.0295152}
 }
+@article{keller2023skin,
+  title   = {From Skin to Skeleton: Towards Biomechanically Accurate {3D} Digital Humans},
+  author  = {Keller, Marilyn and Werling, Keenon and Shin, Soyong and Delp, Scott and Pujades, Sergi and Liu, C. Karen and Black, Michael J.},
+  journal = {ACM Transactions on Graphics},
+  volume  = {42},
+  number  = {6},
+  pages   = {1--12},
+  year    = {2023},
+  doi     = {10.1145/3618381}
+}
 ```
-
-<!-- TODO: add author lists to the two AddBiomechanics entries and the SKEL entry (Keller et al., SIGGRAPH Asia 2023) from the paper's main.bib. -->
 
 ## Acknowledgments
 

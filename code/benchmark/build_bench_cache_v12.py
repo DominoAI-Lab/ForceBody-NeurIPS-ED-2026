@@ -34,7 +34,7 @@ from pathlib import Path
 import numpy as np
 
 HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(HERE.parent))  # the release root holds forcebody_io.py
+sys.path.insert(0, str(HERE.parent))  # the code/ folder holds forcebody_io.py
 import forcebody_io as fio  # noqa: E402
 
 SPEC_PATH = HERE / 'spec_v12.json'

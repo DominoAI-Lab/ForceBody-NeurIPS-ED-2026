@@ -106,10 +106,10 @@ See `../benchmark/BENCHMARK.md` for the metrics and strata.
 
 | Tool | Purpose |
 |---|---|
-| `aggregate.py` | Scores every prediction file of one or more run folders, writes per-run values, mean +- std over runs (seeds), UW gain per run and `paper_vs_release.csv`. |
+| `aggregate.py` | Scores every prediction file of one or more run folders, writes per-run values, mean +- std over runs (seeds), UW gain per run and `submitted_vs_release.csv` (the numbers of the submitted paper on release 1.0 next to the release runs). |
 | `scripts/run_job.sh` | One job with the paper arguments: `JOB=tau|uw|grf|ablation`, `MODEL`, `CACHE`, `RUNS`, optional `SEED`, `COND`, `GPU`, `PY`. |
 | `scripts/run_job.sbatch` | Slurm wrapper of `run_job.sh` (add your partition / account). |
-| `../visualize.py` | Renders one trial (see `../VISUALIZATION.md`). Needs the external addb2skel render utilities and the SKEL model; the baselines do not. |
+| `../visualize.py` | Renders one trial (see `../VISUALIZATION.md`). Needs PyTorch, pyrender and the SKEL package and model. The baselines do not. |
 
 Seeds (the benchmark runs used three seeds, 1 to 3):
 

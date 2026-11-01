@@ -2,11 +2,13 @@
 
 Benchmark card for predicting joint torques (T-tau) and ground reaction forces (T-GRF) from motion on ForceBody 1.3.0.
 The machine-readable definition is `benchmark/spec_v12.json` (spec version `forcebody-bench-1.2.0`, unchanged since
-dataset 1.2.0). This release ships the card, the spec, a loader and cache builder (`benchmark/build_bench_cache_v12.py`)
-and a reference scorer (`benchmark/score_v12.py`). Baselines retrained on dataset 1.2.1 are listed under "Results".
+dataset 1.2.0). The folder `code/benchmark/` of the GitHub repository holds the card, the spec, a loader and cache
+builder (`benchmark/build_bench_cache_v12.py`) and a reference scorer (`benchmark/score_v12.py`). The data are on
+Hugging Face (https://huggingface.co/datasets/kwonjoon/ForceBody). Baselines retrained on dataset 1.2.1 are listed under
+"Results".
 Dataset 1.3.0 has the same benchmark inputs, labels, masks and splits as 1.2.1; only the 40 Hamner2013 trial keys
 changed (`Hammer2013_*` -> `Hamner2013_*`, `uid_map_v12_to_v13.csv`), so prediction files keyed by 1.2.x `trial_uid`
-must have these 40 keys renamed. The numbers in the ForceBody paper are not benchmark numbers; see "Paper numbers".
+must have these 40 keys renamed. The ForceBody paper reports three-seed means on all test strata, see "Paper numbers".
 
 ## Tasks
 
@@ -49,7 +51,8 @@ the SKEL fit to the AddB kinematics pass, which never saw the force plates. `pas
 dynamics pass, which AddBiomechanics adjusted to agree with the measured GRF. It can be selected, but the cache meta and
 every result json then carry `leaky_input: true` and `official_table_eligible: false`, and such results are **not**
 listed in the tables below. Recovering the total GRF from the centre-of-mass acceleration alone, without learning, has a
-median error of 2.56 N/kg on pass-1 kinematics and 0.20 N/kg on pass-2 kinematics (README, "Leakage policy").
+median error of 2.56 N/kg on pass-1 kinematics and 0.20 N/kg on pass-2 kinematics (DETAILS.md on Hugging Face,
+"Leakage policy").
 
 The inputs are an allowlist: only the benchmark inputs of the table above are accepted, and any other requested input
 raises `ValueError` in the loader (`build_bench_cache_v12.check_inputs`). The fields known to carry force information
@@ -94,15 +97,19 @@ Scored frames and trials include the pathological stratum; "trials with labels" 
 
 ## How to run
 
+Run the commands from the `code/` folder of the repository. `/path/to/ForceBody` is the downloaded dataset folder.
+
 ```bash
 # caches (default pose source pass0; one .npz + .json per split)
-python benchmark/build_bench_cache_v12.py --release . --out bench_cache --splits train val test
+python benchmark/build_bench_cache_v12.py --release /path/to/ForceBody --out bench_cache --splits train val test
 # score a prediction file on the test split
 python benchmark/score_v12.py --task tau --cache bench_cache/bench_test_pass0.npz --pred my_tau_pred.npz --out tau_result.json
 python benchmark/score_v12.py --task grf --cache bench_cache/bench_test_pass0.npz --pred my_grf_pred.npz --out grf_result.json
 ```
 
 ```python
+import sys
+sys.path.insert(0, "benchmark")            # run from code/
 import build_bench_cache_v12 as B
 c = B.load_cache("bench_cache/bench_train_pass0.npz")
 x = B.input_matrix(c)                      # [N, 61] = poses, trans_vel, betas, mass_kg, height_m
@@ -114,61 +121,77 @@ for i, uid, sl in B.iter_trials(c): ...    # per-trial frame slices
 
 ## Results
 
-Baselines: the paper model code (Table 4 torque models, Table 3 GRF MLP) retrained on dataset 1.2.1 with the pass-0
-caches of `build_bench_cache_v12.py` (2026-10-29). Inputs are benchmark inputs only (`poses`, `trans_vel`, `betas`,
-`mass_kg`, `height_m`, with pose velocity and acceleration derived inside the trial; the GRF MLP also uses `joints`
-relative to the pelvis). Training on `train`, checkpoint selection on `val`, `test` scored once, one seed. Every row
-comes from a `score_v12.py` result json with `official_table_eligible == true` (`score_v12.table_row`). Rows marked
-pending were still training when 1.3.0 was frozen.
+Baselines: the paper model code in `code/baselines/` (Table 4 torque models, the Transformer + UW of Table 5, the Table 3
+GRF MLP and GLN) retrained on dataset 1.2.1 with the pass-0 caches of `build_bench_cache_v12.py` (2026-10-29). Inputs are
+benchmark inputs only. The torque models use `poses`, `trans_vel`, `betas`, `mass_kg` and `height_m`, with pose velocity
+and acceleration derived inside the trial. The GRF models use `poses`, their second difference and `joints` relative to
+the pelvis. Training on `train`, checkpoint selection on `val`, `test` scored once. Every value is the mean ± standard
+deviation (ddof 1) over three seeds. Seed 1 is the original run (torque models unseeded, UW seed 0, GRF seed 20260427),
+seeds 2 and 3 use `--seed 2` and `--seed 3` (`code/baselines/README.md`). Every seed comes from a `score_v12.py` result
+json with `official_table_eligible == true` (`score_v12.table_row`).
 
-T-tau, test split, healthy stratum (17 persons, 732 trials, 701,174 scored frames), group `all` (20 DOFs), N m/kg.
+Two aggregations are listed. `all_strata` pools the healthy and pathological test persons, as in the paper tables.
+`pooled` is the healthy stratum, the headline of this card. For every seed, `score_v12.py` also reports `study_macro`,
+`per_study`, `per_activity` and the 95% person-level bootstrap intervals.
 
-| model | pooled RMSE [95% CI] | pooled MAE | pooled PCC [95% CI] | study-macro RMSE | study-macro PCC |
-|---|---|---|---|---|---|
-| MLP | 0.145 [0.135, 0.154] | 0.101 | 0.763 [0.610, 0.852] | 0.148 | 0.605 |
-| Conv1D | 0.131 [0.120, 0.138] | 0.087 | 0.803 [0.636, 0.902] | 0.138 | 0.636 |
-| LSTM | 0.132 [0.120, 0.143] | 0.088 | 0.798 [0.637, 0.892] | 0.139 | 0.640 |
-| GRU | 0.128 [0.115, 0.136] | 0.085 | 0.804 [0.647, 0.892] | 0.132 | 0.662 |
-| Mamba2 | 0.125 [0.112, 0.132] | 0.081 | 0.818 [0.669, 0.909] | 0.129 | 0.673 |
-| Transformer | pending | pending | pending | pending | pending |
-| Transformer + UW | pending | pending | pending | pending | pending |
-| GLN | pending | pending | pending | pending | pending |
+T-tau, test split, group `all` (20 DOFs), N m/kg. `all_strata`: 19 persons, 816 trials, 731,143 scored frames.
+`pooled`: 17 persons, 732 trials, 701,174 scored frames.
 
-T-GRF, test split, healthy stratum (17 persons, 780 trials, 725,875 scored frames), group `all` (6 channels), BW.
+| model | all_strata RMSE | all_strata MAE | all_strata PCC | pooled RMSE | pooled MAE | pooled PCC |
+|---|---|---|---|---|---|---|
+| MLP | 0.148 ± 0.003 | 0.103 ± 0.002 | 0.757 ± 0.002 | 0.148 ± 0.003 | 0.103 ± 0.002 | 0.760 ± 0.002 |
+| Conv1D | 0.129 ± 0.002 | 0.086 ± 0.001 | 0.802 ± 0.002 | 0.129 ± 0.002 | 0.086 ± 0.001 | 0.803 ± 0.002 |
+| LSTM | 0.131 ± 0.002 | 0.088 ± 0.001 | 0.795 ± 0.003 | 0.132 ± 0.002 | 0.088 ± 0.001 | 0.797 ± 0.003 |
+| GRU | 0.127 ± 0.001 | 0.085 ± 0.001 | 0.805 ± 0.003 | 0.128 ± 0.001 | 0.085 ± 0.001 | 0.807 ± 0.003 |
+| Mamba2 | 0.125 ± 0.001 | 0.082 ± 0.001 | 0.813 ± 0.004 | 0.125 ± 0.001 | 0.082 ± 0.001 | 0.814 ± 0.004 |
+| Transformer | 0.155 ± 0.009 | 0.107 ± 0.007 | 0.760 ± 0.010 | 0.155 ± 0.009 | 0.107 ± 0.007 | 0.763 ± 0.010 |
+| Transformer + UW | 0.149 ± 0.007 | 0.101 ± 0.007 | 0.772 ± 0.012 | 0.149 ± 0.007 | 0.101 ± 0.007 | 0.775 ± 0.012 |
 
-| model | pooled RMSE [95% CI] | pooled MAE | pooled PCC [95% CI] | study-macro RMSE | study-macro PCC |
-|---|---|---|---|---|---|
-| MLP | 0.048 [0.043, 0.056] | 0.028 | 0.947 [0.910, 0.951] | 0.053 | 0.843 |
+T-GRF, test split, group `all` (6 channels), BW. `all_strata`: 19 persons, 869 trials, 758,323 scored frames. `pooled`:
+17 persons, 780 trials, 725,875 scored frames. The column "Table 3 GRF" is the paper metric on the `all_strata` frames:
+the mean over scored frames of the sum over the two feet of the 3D error norm, in N/kg (`grf_paper_metric` in
+`code/baselines/aggregate.py`).
 
-Pathological stratum (reported separately; test split, 2 persons).
+| model | Table 3 GRF (N/kg) | all_strata RMSE | all_strata MAE | all_strata PCC | pooled RMSE | pooled MAE | pooled PCC |
+|---|---|---|---|---|---|---|---|
+| MLP | 1.165 ± 0.011 | 0.048 ± 0.000 | 0.028 ± 0.000 | 0.945 ± 0.001 | 0.048 ± 0.001 | 0.028 ± 0.000 | 0.946 ± 0.001 |
+| GLN | 1.136 ± 0.040 | 0.050 ± 0.001 | 0.027 ± 0.001 | 0.944 ± 0.005 | 0.049 ± 0.002 | 0.026 ± 0.001 | 0.945 ± 0.006 |
+
+Pathological stratum (reported separately, test split, 2 persons, group `all`, three seeds).
 
 | model | task | trials | pooled RMSE | pooled MAE | pooled PCC |
 |---|---|---|---|---|---|
-| MLP | T-tau | 84 | 0.130 | 0.102 | 0.544 |
-| Conv1D | T-tau | 84 | 0.125 | 0.096 | 0.588 |
-| LSTM | T-tau | 84 | 0.116 | 0.089 | 0.619 |
-| GRU | T-tau | 84 | 0.122 | 0.095 | 0.637 |
-| Mamba2 | T-tau | 84 | 0.120 | 0.092 | 0.652 |
-| Transformer | T-tau | pending | pending | pending | pending |
-| Transformer + UW | T-tau | pending | pending | pending | pending |
-| GLN | T-tau | pending | pending | pending | pending |
-| MLP | T-GRF | 89 | 0.055 | 0.039 | 0.787 |
+| MLP | T-tau | 84 | 0.133 ± 0.010 | 0.106 ± 0.010 | 0.551 ± 0.010 |
+| Conv1D | T-tau | 84 | 0.118 ± 0.006 | 0.090 ± 0.005 | 0.619 ± 0.030 |
+| LSTM | T-tau | 84 | 0.124 ± 0.012 | 0.096 ± 0.011 | 0.617 ± 0.014 |
+| GRU | T-tau | 84 | 0.116 ± 0.006 | 0.088 ± 0.006 | 0.644 ± 0.012 |
+| Mamba2 | T-tau | 84 | 0.115 ± 0.006 | 0.086 ± 0.006 | 0.663 ± 0.014 |
+| Transformer | T-tau | 84 | 0.133 ± 0.003 | 0.102 ± 0.001 | 0.514 ± 0.032 |
+| Transformer + UW | T-tau | 84 | 0.132 ± 0.008 | 0.101 ± 0.006 | 0.559 ± 0.023 |
+| MLP | T-GRF | 89 | 0.054 ± 0.001 | 0.038 ± 0.001 | 0.796 ± 0.010 |
+| GLN | T-GRF | 89 | 0.063 ± 0.012 | 0.046 ± 0.009 | 0.735 ± 0.051 |
 
 ## Paper numbers
 
-The force-regression numbers of the ForceBody paper (Tables 3, 4, 5 and 15) were computed on **ForceBody 1.0.0 (reviewed
-build)**. They are not reproduced by v1.1, 1.2 or 1.3 and must not be mixed with results on this benchmark.
+The camera-ready ForceBody paper reports the force benchmark in Tables 3 (ForceBody rows), 4, 5, 14 and 15. These
+tables are the baselines of `code/baselines/` retrained on dataset 1.2.1, whose benchmark inputs, labels, masks and
+splits are identical in 1.3.0. Checkpoints were selected on the 12 validation persons (1,098 trials), and the 19 test
+persons (914 trials) were scored once. Each value is the mean and standard deviation over three seeds on the
+`all_strata` aggregation. The `all_strata` columns of the T-tau table above equal the "All joints" row of paper Tables 4
+and 5, and the "Table 3 GRF" column equals the ForceBody rows of paper Table 3.
 
-- Table 3 (decision D24, footnote only, no retraining). The AddB row took AddB **dynamics-pass (pass 2)** kinematics as
-  input, which were fitted with the force plates (force-label leakage). Its two rows also differ in model
-  implementation, optimizer, training subset and validation. The GRF of Table 3 is the two-foot total.
-- Tables 4, 5 and 15 (decision D25: the paper tables keep their numbers with a footnote; the baselines retrained on 1.2.1 are under "Results"). v1 torque labels, P80 subset (SKEL fit error at most
-  the 80th percentile), validation set equal to the test set, one seed. "All joints" is the 20 direct DOFs (the paper
-  text said 18). The torque labels changed between versions: scoring the v1.1 `tau_selfconsistent` against the paper
-  labels gives All-joint RMSE / MAE / PCC 0.287 / 0.087 / 0.721, the same order as the model errors.
-- The reference scorer contains the paper formula (`score_v12.paper_style_metrics`, `--mode paper`: N m errors over the
-  GRF-valid frames divided by the mean body mass, PCC per DOF). On the paper test cache it reproduces the paper
-  package's scoring function exactly; this check is not a benchmark result.
+- Table 3. The two AddBiomechanics rows are taken from the reviewed build of the dataset, so they serve as a reference
+  rather than a matched comparison. They took AddB **dynamics-pass (pass 2)** kinematics as input, which were fitted
+  with the force plates (force-label leakage). They also differ from the ForceBody rows in model implementation,
+  optimizer, training subset and validation. The GRM column of Table 3 is not a target of this benchmark.
+- The submitted version of the paper used **ForceBody 1.0.0 (reviewed build)** with the v1 torque labels, the P80 subset
+  (SKEL fit error at most the 80th percentile), the validation set equal to the test set and one seed. Those numbers
+  must not be mixed with results on this benchmark. The torque labels changed between versions: scoring the v1.1
+  `tau_selfconsistent` against the v1 labels gives All-joint RMSE / MAE / PCC 0.287 / 0.087 / 0.721, the same order as
+  the model errors.
+- The reference scorer contains the formula of the submitted paper (`score_v12.paper_style_metrics`, `--mode paper`: N m
+  errors over the GRF-valid frames divided by the mean body mass, PCC per DOF). On the test cache of the submitted paper
+  it reproduces the scoring function of that paper package exactly. This check is not a benchmark result.
 
 ## Known limitations
 

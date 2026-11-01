@@ -12,8 +12,10 @@ A run folder holds any of:
   grf/<cell>/pred_test_grf.npz       (grf/train_grf.py, also writes pred_test_full15.npz)
 
 Writes <out_dir>/scores/*.json, <out_dir>/summary.{json,csv} (per run values, mean +- std (ddof=1) over the runs,
-UW gain = transformer_uw - transformer per run) and <out_dir>/paper_vs_release.csv (mean over runs next to the
-numbers printed in the submitted paper, which were computed on release 1.0 and on all test strata).
+UW gain = transformer_uw - transformer per run) and <out_dir>/submitted_vs_release.csv (mean over runs next to the
+numbers printed in the submitted paper, which were computed on release 1.0 and on all test strata). The camera-ready
+paper reports the three-seed means of this script on release 1.2.1 (all_strata rows), listed in README.md and
+benchmark/BENCHMARK.md.
 
 Usage: python aggregate.py --cache_dir <cache> --runs seed1=<runs/seed1> seed2=<runs/seed2> --out_dir <results>
 """
@@ -32,9 +34,9 @@ import score_v12 as S  # noqa: E402
 
 G = 9.81
 
-# Numbers printed in the submitted paper (release 1.0): torque table (RMSE, MAE, PCC) per group, GRF table (GRF N/kg,
-# GRM N m/kg). Keys are the prediction names used here.
-PAPER_TAU = {
+# Numbers printed in the submitted paper (release 1.0, not the camera-ready version): torque table (RMSE, MAE, PCC) per
+# group, GRF table (GRF N/kg, GRM N m/kg). Keys are the prediction names used here.
+SUBMITTED_TAU = {
     'mlp': {'upper': (0.008, 0.004, 0.579), 'lower': (0.470, 0.245, 0.653), 'all': (0.285, 0.149, 0.623)},
     'fconv': {'upper': (0.008, 0.004, 0.575), 'lower': (0.471, 0.246, 0.644), 'all': (0.286, 0.149, 0.616)},
     'lstm': {'upper': (0.008, 0.004, 0.545), 'lower': (0.479, 0.258, 0.637), 'all': (0.291, 0.156, 0.600)},
@@ -43,7 +45,7 @@ PAPER_TAU = {
     'transformer': {'upper': (0.009, 0.006, 0.461), 'lower': (0.538, 0.307, 0.572), 'all': (0.326, 0.186, 0.528)},
     'transformer_uw': {'upper': (0.008, 0.005, 0.536), 'lower': (0.500, 0.270, 0.605), 'all': (0.303, 0.164, 0.578)},
 }
-PAPER_GRF = {'G_mlp_deep': (1.522, 0.315), 'G_gln': (1.715, 0.258)}
+SUBMITTED_GRF = {'G_mlp_deep': (1.522, 0.315), 'G_gln': (1.715, 0.258)}
 
 
 def find_preds(run_dir):
@@ -130,21 +132,21 @@ def main():
         w.writerows(rows)
 
     cmp_rows = []
-    for n, groups in PAPER_TAU.items():
+    for n, groups in SUBMITTED_TAU.items():
         for grp, (pr, pm, pp) in groups.items():
             got = [js.get('tau', {}).get(n, {}).get(f'allstrata_{grp}_{x}', {}).get('mean') for x in 'RMP']
             if got[0] is not None:
-                cmp_rows.append(dict(task='tau', model=n, group=grp, paper_R=pr, paper_M=pm, paper_P=pp,
+                cmp_rows.append(dict(task='tau', model=n, group=grp, submitted_R=pr, submitted_M=pm, submitted_P=pp,
                                      release_allstrata_R=got[0], release_allstrata_M=got[1], release_allstrata_P=got[2]))
-    for n, (pg, pgm) in PAPER_GRF.items():
+    for n, (pg, pgm) in SUBMITTED_GRF.items():
         got = js.get('grf', {}).get(n, {})
         if got:
-            cmp_rows.append(dict(task='grf', model=n, group='per foot', paper_GRF_Nkg=pg, paper_GRM_Nmkg=pgm,
+            cmp_rows.append(dict(task='grf', model=n, group='per foot', submitted_GRF_Nkg=pg, submitted_GRM_Nmkg=pgm,
                                  release_GRF_Nkg=got['GRF_Nkg']['mean'],
                                  release_GRM_Nmkg_unofficial=got['GRM_Nmkg_unofficial']['mean']))
     if cmp_rows:
         keys = list(dict.fromkeys(k for r in cmp_rows for k in r))
-        with open(out_dir / 'paper_vs_release.csv', 'w', newline='') as f:
+        with open(out_dir / 'submitted_vs_release.csv', 'w', newline='') as f:
             w = csv.DictWriter(f, fieldnames=keys)
             w.writeheader()
             w.writerows(cmp_rows)

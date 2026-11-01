@@ -1,6 +1,6 @@
 """ForceBody trial loader (release 1.3.0; trial format v1.2) with an explicit pose source (numpy only).
 
-ForceBody (since v1.2) ships two SKEL pose sets per trial (see README, "Choosing a pose source"):
+ForceBody (since v1.2) ships two SKEL pose sets per trial (see DETAILS.md, "Choosing a pose source"):
 
   pose_source  alias  fields used                                            fitted to
   'pass0'      'kin'  poses, trans, joints, q_kin, qd_kin, qdd_kin,          AddB kinematics pass (pass 0 + 30 Hz
@@ -10,7 +10,7 @@ ForceBody (since v1.2) ships two SKEL pose sets per trial (see README, "Choosing
 
 Default use: force / torque estimation and any model or metric that takes motion as input and predicts or scores forces
 -> 'pass0'. Text-to-motion (motion only, or motion + GRF + torque) -> 'pass2'. Feeding 'pass2' kinematics to a model
-that predicts or scores forces leaks the force labels into its input (README, "Leakage policy").
+that predicts or scores forces leaks the force labels into its input (DETAILS.md, "Leakage policy").
 
     import forcebody_io as fio
     d = fio.load_trial('trials/Moore2015/S10/Moore2015_S10_walk_014.npz', pose_source='pass0')
@@ -24,7 +24,7 @@ load_trial() returns a dict with the common keys
   pose_source ('pass0' or 'pass2'), pose_fit_target (skel_fit_target or skel_fit_target_dyn), q_source (str)
   arm_event_ok [T,2], trunk_event_ok [T], fit_event_ok [T,7], addb_limit_mask [T,11],
   knee_clamp_frame [T,2] (1.2.1; right, left)
-                                               pose masks of the chosen set (True = usable; README, "Pose masks of the
+                                               pose masks of the chosen set (True = usable; DETAILS.md, "Pose masks of the
                                                fix rounds"); for 'pass2' also use dyn_root_jump_ok [T]
 plus every other field of the trial file unchanged (GRF, CoP, torques, masks, metadata). The raw pose-set fields of
 BOTH sources (poses, poses_dyn, trans, trans_dyn, joints, joints_dyn, q_kin*, q_gt*, addb_joints_kin, addb_joints_dyn)
@@ -52,12 +52,12 @@ _FIELDS = {
 }
 _POSE_SET_KEYS = {'poses', 'trans', 'joints', 'poses_dyn', 'trans_dyn', 'joints_dyn', 'q_kin', 'qd_kin', 'qdd_kin',
                   'q_gt', 'qd_gt', 'qdd_gt', 'addb_joints_kin', 'addb_joints_dyn',
-                  # v1.2 fix-round pose masks of each set (README "Pose masks of the fix rounds")
+                  # v1.2 fix-round pose masks of each set (DETAILS.md "Pose masks of the fix rounds")
                   'arm_event_ok_kin', 'arm_event_ok_dyn', 'trunk_event_ok_kin', 'trunk_event_ok_dyn',
                   'fit_event_ok_kin', 'fit_event_ok_dyn', 'addb_limit_mask_kin', 'addb_limit_mask_dyn',
                   'knee_clamp_frame_kin', 'knee_clamp_frame_dyn'}   # 1.2.1: SKEL knee on its 0 bound, AddB knee flexed
 
-# The leakage rule is an ALLOWLIST (README, "Leakage policy"): a model that predicts or scores forces or torques may take
+# The leakage rule is an ALLOWLIST (DETAILS.md, "Leakage policy"): a model that predicts or scores forces or torques may take
 # as input only ALLOWED_INPUT_FIELDS (the pass-0 pose set through load_trial(..., 'pass0'), body shape and person
 # descriptors) plus person-free text metadata. LEAKY_INPUT_FIELDS is a denylist safety net of fields known to carry
 # information from the measured forces (the dynamics pass, force / torque labels and everything derived from the GRF).
@@ -101,7 +101,7 @@ def load_trial(npz_path, pose_source=None):
     fmap = dict(_FIELDS[src])
     q_source = fmap['q']
     if src == 'pass2' and str(raw['skel_fit_target_dyn']) == 'kin_retimed':
-        # q_gt (AddB pass 2) was fitted to the misaligned force; the re-timed labels use q_kin (README, re-timed trials)
+        # q_gt (AddB pass 2) was fitted to the misaligned force; the re-timed labels use q_kin (DETAILS.md, re-timed trials)
         fmap.update(q='q_kin', qd='qd_kin', qdd='qdd_kin')
         q_source = 'q_kin (re-timed trial: q_gt is not usable)'
     for common, field in fmap.items():
