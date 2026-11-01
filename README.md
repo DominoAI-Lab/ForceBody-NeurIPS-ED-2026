@@ -40,15 +40,39 @@ Every trial is one NumPy `.npz` file, so you can read the data with NumPy alone.
 Each clip shows the SKEL body with motion-capture markers and GRF arrows at the centre of pressure.
 The right panel shows the measured vertical GRF per foot and one joint moment τ with the band τ ± σ<sub>τ</sub>.
 
-| Walking (Uhlrich2023) | Running (Hamner2013) |
-|:---:|:---:|
-| <img src="assets/walking_uhlrich2023.gif" width="100%"> | <img src="assets/running_hamner2013.gif" width="100%"> |
-| **Sit-to-stand (Uhlrich2023)** | **Squat (Li2021)** |
-| <img src="assets/sit_to_stand_uhlrich2023.gif" width="100%"> | <img src="assets/squat_li2021.gif" width="100%"> |
-| **Stair ascent (Falisse2017)** | **Single-leg hop (Han2023)** |
-| <img src="assets/stair_ascent_falisse2017.gif" width="100%"> | <img src="assets/hop_han2023.gif" width="100%"> |
-| **Side stretch (Han2023)** | |
-| <img src="assets/side_stretch_han2023.gif" width="100%"> | |
+### Walking (Uhlrich et al. 2023)
+
+<p align="center"><img src="assets/walking_uhlrich2023.gif" width="100%" alt="Walking"></p>
+
+### Running (Hamner & Delp 2013)
+
+<p align="center"><img src="assets/running_hamner2013.gif" width="100%" alt="Running"></p>
+
+### Sit-to-stand (Uhlrich et al. 2023)
+
+<p align="center"><img src="assets/sit_to_stand_uhlrich2023.gif" width="100%" alt="Sit-to-stand"></p>
+
+### Squat (Li et al. 2021)
+
+<p align="center"><img src="assets/squat_li2021.gif" width="100%" alt="Squat"></p>
+
+### Stair ascent (Falisse et al. 2017)
+
+<p align="center"><img src="assets/stair_ascent_falisse2017.gif" width="100%" alt="Stair ascent"></p>
+
+### Drop jump (Uhlrich et al. 2023)
+
+<p align="center"><img src="assets/drop_jump.gif" width="100%" alt="Drop jump"></p>
+
+### Single-leg hop (Han et al. 2023)
+
+<p align="center"><img src="assets/hop_han2023.gif" width="100%" alt="Single-leg hop"></p>
+
+### Side stretch (Han et al. 2023)
+
+<p align="center"><img src="assets/side_stretch_han2023.gif" width="100%" alt="Side stretch"></p>
+
+### Torque and uncertainty across activities
 
 Torque magnitude |τ| (left body in each pair) and torque uncertainty σ<sub>τ</sub> (right body) on six activities.
 
@@ -62,21 +86,21 @@ One file per trial, `trials/<study>/S<NN>/<trial_uid>.npz`. The main fields are 
 
 | Field | Shape | Unit | Frame | Content |
 |---|---|---|---|---|
-| `poses` | [T, 46] | rad | skel_world | SKEL pose fitted to the AddB kinematics pass (never saw the force plates) |
-| `trans` | [T, 3] | m | skel_world | SKEL root translation of `poses` |
-| `joints` | [T, 24, 3] | m | skel_world | SKEL joint centres of `poses` |
-| `betas` | [10] | | | SKEL shape, one per person |
-| `skel_gender` | scalar | | | SKEL model used for the fit |
-| `poses_dyn`, `trans_dyn`, `joints_dyn` | as above | | skel_world | Second SKEL fit, to the AddB dynamics pass (force-aware) |
-| `q_kin`, `q_gt` | [T, 37] | rad, m | addb_lab | AddB kinematics-pass and dynamics-pass joint angles (OpenSim Rajagopal DOFs) |
-| `grf_aligned` | [T, C, 3] | N | skel_world | Measured ground reaction force per contact (0 = right foot, 1 = left foot) |
-| `cop_aligned_foot` | [T, C, 3] | m | skel_world | Centre of pressure per contact |
-| `contact_torque_aligned` | [T, C, 3] | N m | skel_world | Free moment at the centre of pressure |
-| `tau_selfconsistent` | [T, 37] | N m, N | addb_lab | Inverse-dynamics joint torque label |
-| `mu_tau`, `sigma_tau` | [T, 37] | N m, N | addb_lab | Monte Carlo mean and standard deviation of the torque |
-| `grf_frame_ok`, `tau_frame_ok`, `mc_frame_ok` | [T] | | | Frame masks for GRF, torque and σ<sub>τ</sub> use |
-| `mass_kg`, `mass_kg_dynamics` | scalar | kg | | Recorded mass (model input) and dynamics mass (label normalization) |
-| `fps`, `fps_true_grid` | scalar | Hz | | Nominal and true frame rate |
+| `poses` | `[T,46]` | rad | skel_world | SKEL pose fitted to the AddB kinematics pass (never saw the force plates) |
+| `trans` | `[T,3]` | m | skel_world | SKEL root translation of `poses` |
+| `joints` | `[T,24,3]` | m | skel_world | SKEL joint centres of `poses` |
+| `betas` | `[10]` | | | SKEL shape, one per person |
+| `skel_gender` | `scalar` | | | SKEL model used for the fit |
+| `poses_dyn`, `trans_dyn`, `joints_dyn` | `as above` | | skel_world | Second SKEL fit, to the AddB dynamics pass (force-aware) |
+| `q_kin`, `q_gt` | `[T,37]` | rad, m | addb_lab | AddB kinematics-pass and dynamics-pass joint angles (OpenSim Rajagopal DOFs) |
+| `grf_aligned` | `[T,C,3]` | N | skel_world | Measured ground reaction force per contact (0 = right foot, 1 = left foot) |
+| `cop_aligned_foot` | `[T,C,3]` | m | skel_world | Centre of pressure per contact |
+| `contact_torque_aligned` | `[T,C,3]` | N m | skel_world | Free moment at the centre of pressure |
+| `tau_selfconsistent` | `[T,37]` | N m, N | addb_lab | Inverse-dynamics joint torque label |
+| `mu_tau`, `sigma_tau` | `[T,37]` | N m, N | addb_lab | Monte Carlo mean and standard deviation of the torque |
+| `grf_frame_ok`, `tau_frame_ok`, `mc_frame_ok` | `[T]` | | | Frame masks for GRF, torque and σ<sub>τ</sub> use |
+| `mass_kg`, `mass_kg_dynamics` | `scalar` | kg | | Recorded mass (model input) and dynamics mass (label normalization) |
+| `fps`, `fps_true_grid` | `scalar` | Hz | | Nominal and true frame rate |
 
 Trial-level metadata (study, activity, protocol, person, captions and quality flags) is in each file and in `manifest.csv`.
 
