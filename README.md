@@ -42,37 +42,15 @@ Every trial is one NumPy `.npz` file, so you can read the data with NumPy alone.
 Each clip shows the SKEL body with motion-capture markers and GRF arrows at the centre of pressure.
 The right panel shows the measured vertical GRF per foot and one joint moment τ with the band τ ± σ<sub>τ</sub>.
 
-### Walking (Uhlrich et al. 2023)
-
-<p align="center"><img src="assets/walking_uhlrich2023.gif" width="100%" alt="Walking"></p>
-
-### Running (Hamner & Delp 2013)
-
-<p align="center"><img src="assets/running_hamner2013.gif" width="100%" alt="Running"></p>
-
-### Sit-to-stand (Uhlrich et al. 2023)
-
-<p align="center"><img src="assets/sit_to_stand_uhlrich2023.gif" width="100%" alt="Sit-to-stand"></p>
-
-### Squat (Li et al. 2021)
-
-<p align="center"><img src="assets/squat_li2021.gif" width="100%" alt="Squat"></p>
-
-### Stair ascent (Falisse et al. 2017)
-
-<p align="center"><img src="assets/stair_ascent_falisse2017.gif" width="100%" alt="Stair ascent"></p>
-
-### Drop jump (Uhlrich et al. 2023)
-
-<p align="center"><img src="assets/drop_jump.gif" width="100%" alt="Drop jump"></p>
-
-### Single-leg hop (Han et al. 2023)
-
-<p align="center"><img src="assets/hop_han2023.gif" width="100%" alt="Single-leg hop"></p>
-
-### Side stretch (Han et al. 2023)
-
-<p align="center"><img src="assets/side_stretch_han2023.gif" width="100%" alt="Side stretch"></p>
+| Running | Stair ascent |
+|:---:|:---:|
+| <img src="assets/running_hamner2013.gif" width="100%"> | <img src="assets/stair_ascent_falisse2017.gif" width="100%"> |
+| **Sit-to-stand** | **Drop jump** |
+| <img src="assets/sit_to_stand_uhlrich2023.gif" width="100%"> | <img src="assets/drop_jump.gif" width="100%"> |
+| **Walking** | **Squat** |
+| <img src="assets/walking_uhlrich2023.gif" width="100%"> | <img src="assets/squat_li2021.gif" width="100%"> |
+| **Single-leg hop** | **Side stretch** |
+| <img src="assets/hop_han2023.gif" width="100%"> | <img src="assets/side_stretch_han2023.gif" width="100%"> |
 
 ### Torque and uncertainty across activities
 
