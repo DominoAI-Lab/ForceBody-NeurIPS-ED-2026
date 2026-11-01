@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+README_before_v2.md
+assets_v2/
+NOTES.md
+make_gifs.sh
+README_before_hf.md

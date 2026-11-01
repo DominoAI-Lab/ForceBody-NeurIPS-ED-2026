@@ -7,7 +7,7 @@
 Joonwoo Kwon, Yufei Zhang, Xiaoming Liu, Zijun Cui
 
 [![Paper](https://img.shields.io/badge/Paper-NeurIPS%202026-b31b1b.svg)](#) <!-- TODO: paper link (OpenReview / proceedings) -->
-[![Dataset](https://img.shields.io/badge/Dataset-Hugging%20Face%20(TODO)-yellow.svg)](#) <!-- TODO: Hugging Face dataset link -->
+[![Dataset](https://img.shields.io/badge/Dataset-Hugging%20Face-yellow.svg)](https://huggingface.co/datasets/kwonjoon/ForceBody)
 [![Code License: MIT](https://img.shields.io/badge/Code-MIT-blue.svg)](LICENSE)
 [![Data License: CC BY-NC 4.0](https://img.shields.io/badge/Data-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
 
@@ -108,12 +108,13 @@ Trial-level metadata (study, activity, protocol, person, captions and quality fl
 
 ### 1. Download
 
+**SKEL model required.** The trial files store SKEL parameters (`poses`, `betas`, `trans`). To build meshes or joints from them, download the SKEL model separately from the [SKEL website](https://skel.is.tue.mpg.de/) under its license. ForceBody does not redistribute it. The force, torque and uncertainty arrays can be used without it.
+
 ```bash
-# TODO: replace with the final Hugging Face repository id
-huggingface-cli download <TODO-org>/ForceBody --repo-type dataset --local-dir ForceBody
+hf download kwonjoon/ForceBody --repo-type dataset --local-dir ForceBody
 ```
 
-The full release is about 74 GB (trials about 37 GB). Get the SKEL model files from the [SKEL authors](https://skel.is.tue.mpg.de/) under their license if you want to build meshes.
+The dataset is about 46 GB (10,386 trial files plus tables and subject models), hosted at https://huggingface.co/datasets/kwonjoon/ForceBody. Get the SKEL model files from the [SKEL authors](https://skel.is.tue.mpg.de/) under their license if you want to build meshes.
 
 ### 2. Load a trial
 
@@ -218,13 +219,12 @@ The data are imbalanced. Running and walking make up 93.5% of the trials, and Ca
 | Path | Status |
 |---|---|
 | `README.md`, `LICENSE`, `assets/` | this page |
-| `forcebody_io.py` | data loader (also shipped with the dataset release) |
-| `visualize.py`, `VISUALIZATION.md` | renderer (needs addb2skel, not yet public) |
-| `benchmark/` | benchmark card, spec, cache builder, reference scorer |
-| Baseline training code (torque models, GRF models, uncertainty weighting) | **TODO.** Not yet in this repository. It is being cleaned for release |
-| SKEL fitting pipeline (addb2skel) | **TODO.** Not yet in this repository |
+| `code/forcebody_io.py` | data loader |
+| `code/visualize.py`, `code/VISUALIZATION.md` | renderer (needs the SKEL model and the addb2skel render utilities, which are not public) |
+| `code/benchmark/` | benchmark card, spec, cache builder, reference scorer |
+| `code/baselines/` | baseline training code: cache build, GRF/GRM and torque training, uncertainty-weighted finetuning, inference, scoring, aggregation (see `code/baselines/README.md`) |
+| SKEL fitting pipeline | not released |
 
-<!-- TODO: update this table to match the files actually pushed. -->
 
 ## License
 
