@@ -106,24 +106,34 @@ Trial-level metadata (study, activity, protocol, person, captions and quality fl
 
 ## Quickstart
 
-### 1. Download
+### 0. Download the SKEL model (required)
 
-**SKEL model required.** The trial files store SKEL parameters (`poses`, `betas`, `trans`). To build meshes or joints from them, download the SKEL model separately from the [SKEL website](https://skel.is.tue.mpg.de/) under its license. ForceBody does not redistribute it. The force, torque and uncertainty arrays can be used without it.
+The trial files store SKEL parameters (`poses`, `betas`, `trans`), not meshes. Register and download the SKEL model from the [SKEL website](https://skel.is.tue.mpg.de/) under its non-commercial license. ForceBody does not redistribute it. You need it to build meshes or joints and to run `visualize.py`. The force, torque and uncertainty arrays can be read without it.
+
+### 1. Download the data
 
 ```bash
 hf download kwonjoon/ForceBody --repo-type dataset --local-dir ForceBody
 ```
 
-The dataset is about 46 GB (10,386 trial files plus tables and subject models), hosted at https://huggingface.co/datasets/kwonjoon/ForceBody. Get the SKEL model files from the [SKEL authors](https://skel.is.tue.mpg.de/) under their license if you want to build meshes.
+The dataset is about 46 GB (10,386 trial files plus tables and subject models), hosted at https://huggingface.co/datasets/kwonjoon/ForceBody.
 
-### 2. Load a trial
+### 2. Install the loader
+
+```bash
+git clone https://github.com/DominoAI-Lab/ForceBody-NeurIPS-ED-2026.git
+cd ForceBody-NeurIPS-ED-2026/code
+pip install numpy
+```
+
+### 3. Load a trial
 
 `forcebody_io.py` needs only NumPy.
 
 ```python
 import forcebody_io as fio
 
-d = fio.load_trial("trials/Moore2015/S10/Moore2015_S10_walk_014.npz", pose_source="pass0")
+d = fio.load_trial("ForceBody/trials/Moore2015/S10/Moore2015_S10_walk_014.npz", pose_source="pass0")
 
 poses   = d["poses"]               # [T, 46] SKEL pose (rad), kinematics-pass fit
 trans   = d["trans"]               # [T, 3]  SKEL root translation (m)
@@ -139,11 +149,11 @@ tau_nmkg, sigma_nmkg = tau[ok] / m, sigma[ok] / m
 
 `pose_source` is required. Use `"pass0"` (alias `"kin"`) for force and torque estimation, and `"pass2"` (alias `"dyn"`) for motion generation with force labels. `load_trial` maps the chosen set to the common keys `poses`, `trans`, `joints`, `q`, `qd`, `qdd`, `addb_joints` and adds `pose_usable` and `pose_source`. `fio.ALLOWED_INPUT_FIELDS` and `fio.LEAKY_INPUT_FIELDS` list the allowed and refused model inputs.
 
-### 3. Visualize
+### 4. Visualize
 
 ```bash
-python visualize.py --npz trials/Moore2015/S10/Moore2015_S10_walk_014.npz --mode png --pose_source pass0
-python visualize.py --npz trials/Moore2015/S10/Moore2015_S10_walk_014.npz --mode mp4 --pose_source pass2
+python visualize.py --npz ForceBody/trials/Moore2015/S10/Moore2015_S10_walk_014.npz --mode png --pose_source pass0
+python visualize.py --npz ForceBody/trials/Moore2015/S10/Moore2015_S10_walk_014.npz --mode mp4 --pose_source pass2
 ```
 
 Options are `--out`, `--fps` (default 20) and `--max-frames` (default 150). The renderer draws the SKEL body coloured by `tau_selfconsistent` and GRF arrows at the centre of pressure.
