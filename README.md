@@ -4,7 +4,11 @@
 
 **NeurIPS 2026, Evaluations & Datasets Track (poster)**
 
-Joonwoo Kwon, Yufei Zhang, Xiaoming Liu, Zijun Cui
+Joonwoo Kwon<sup>1</sup>, Yufei Zhang<sup>2</sup>, Xiaoming Liu<sup>3</sup>, Zijun Cui<sup>1</sup>
+
+<sup>1</sup>Michigan State University &nbsp; <sup>2</sup>Independent Researcher &nbsp; <sup>3</sup>University of North Carolina at Chapel Hill
+
+<hr>
 
 [![Paper](https://img.shields.io/badge/Paper-NeurIPS%202026-b31b1b.svg)](#) <!-- TODO: paper link (OpenReview / proceedings) -->
 [![Dataset](https://img.shields.io/badge/Dataset-Hugging%20Face-yellow.svg)](https://huggingface.co/datasets/kwonjoon/ForceBody)
