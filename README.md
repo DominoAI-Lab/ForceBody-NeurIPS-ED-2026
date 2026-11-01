@@ -1,8 +1,6 @@
 <div align="center">
 
-# ForceBody
-
-### Force-Paired Parametric Body Motion with Torque Uncertainty
+# ForceBody: Force-Paired Parametric Body Motion with Torque Uncertainty
 
 **NeurIPS 2026, Evaluations & Datasets Track (poster)**
 
