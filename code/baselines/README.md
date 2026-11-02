@@ -2,7 +2,7 @@
 
 Training and evaluation code of the ForceBody force benchmark baselines:
 
-- Joint torque prediction (T-tau): MLP, Conv1D (`fconv`), BiLSTM (`lstm`), GRU, Mamba2, Transformer.
+- Joint torque prediction (T-tau): MLP, Conv1D (`fconv`), LSTM (`lstm`, bidirectional), GRU, Mamba2, Transformer.
 - Uncertainty-weighted (UW) fine-tune of a torque model (paper row Transformer+UW).
 - Ground reaction force prediction (T-GRF, with GRM and CoM acceleration as extra outputs): MLP (`mlp_deep`) and GLN (`gln`).
 

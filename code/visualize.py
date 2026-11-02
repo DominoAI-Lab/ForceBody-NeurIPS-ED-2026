@@ -7,7 +7,7 @@ Two modes:
   png   still image, two views ('view 0 deg' + 'view 60 deg'), one peak single-support frame
   mp4   animation over the contact window ('view 60 deg')
 
-Pose set (each trial ships two, DETAILS.md "Choosing a pose source"):
+Pose set (each trial ships two, DETAILS.md (Hugging Face dataset repo) "Choosing a pose source"):
   --pose_source pass0   (alias kin, default) poses / trans fitted to the AddB kinematics pass
   --pose_source pass2   (alias dyn)          poses_dyn / trans_dyn fitted to the AddB dynamics pass (repaired target where skel_fit_target_dyn says so)
 The trial is read with forcebody_io.load_trial(npz, pose_source), so exactly one pose set is used. If the chosen set is

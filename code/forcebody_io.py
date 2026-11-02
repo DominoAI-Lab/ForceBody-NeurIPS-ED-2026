@@ -1,6 +1,6 @@
 """ForceBody trial loader (release 1.3.0; trial format v1.2) with an explicit pose source (numpy only).
 
-ForceBody (since v1.2) ships two SKEL pose sets per trial (see DETAILS.md, "Choosing a pose source"):
+ForceBody (since v1.2) ships two SKEL pose sets per trial (see DETAILS.md in the Hugging Face dataset repo, "Choosing a pose source"):
 
   pose_source  alias  fields used                                            fitted to
   'pass0'      'kin'  poses, trans, joints, q_kin, qd_kin, qdd_kin,          AddB kinematics pass (pass 0 + the 30 Hz

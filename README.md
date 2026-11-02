@@ -73,7 +73,7 @@ One file per trial, `trials/<study>/S<NN>/<trial_uid>.npz`. The main fields are 
 | `skel_gender` | `scalar` | | | SKEL model used for the fit |
 | `poses_dyn`, `trans_dyn`, `joints_dyn` | `as above` | | skel_world | Second SKEL fit, to the AddB dynamics pass (force-aware) |
 | `q_kin`, `q_gt` | `[T,37]` | rad, m | addb_lab | AddB kinematics-pass and dynamics-pass joint angles (OpenSim Rajagopal DOFs) |
-| `grf_aligned` | `[T,C,3]` | N | skel_world | Measured ground reaction force per contact (0 = right foot, 1 = left foot) |
+| `grf_aligned` | `[T,C,3]` | N | skel_world | Measured ground reaction force per contact (0 = right foot, 1 = left foot, Falisse2017 also 2 = pelvis on an instrumented chair) |
 | `cop_aligned_foot` | `[T,C,3]` | m | skel_world | Centre of pressure per contact |
 | `contact_torque_aligned` | `[T,C,3]` | N m | skel_world | Free moment at the centre of pressure |
 | `tau_selfconsistent` | `[T,37]` | N m, N | addb_lab | Inverse-dynamics joint torque label |

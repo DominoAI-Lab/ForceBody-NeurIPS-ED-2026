@@ -57,7 +57,7 @@ the SKEL fit to the AddB kinematics pass, which never saw the force plates. `pas
 dynamics pass, which AddBiomechanics adjusted to agree with the measured GRF. It can be selected, but the cache meta and
 every result json then carry `leaky_input: true` and `official_table_eligible: false`, and such results are **not**
 listed in the tables below. Recovering the total GRF from the centre-of-mass acceleration alone, without learning, has a
-median error of 2.56 N/kg on pass-1 kinematics and 0.20 N/kg on pass-2 kinematics (DETAILS.md on Hugging Face,
+median error of 2.56 N/kg on pass-1 kinematics (the pass0 set, `q_kin`) and 0.20 N/kg on pass-2 kinematics (the pass2 set) (DETAILS.md on Hugging Face,
 "Leakage policy").
 
 The inputs are an allowlist: only the benchmark inputs of the table above are accepted, and any other requested input
