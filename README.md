@@ -34,7 +34,8 @@ Every trial is one NumPy `.npz` file, so you can read the data with NumPy alone.
 - 140 subjects. 75 male, 55 female, 10 with unreported sex.
 - Height 1.73 ± 0.09 m, mass 68.8 ± 11.5 kg.
 - About 98% of trials are on a grid near 100 Hz. The others keep their native rate (61, 201 or 250 Hz).
-- σ<sub>τ</sub> is released for 10,382 of 10,386 trials.
+- σ<sub>τ</sub> is released for 10,382 of 10,386 trials (`has_uncertainty`). The other 4 trials are shorter than one 6 Hz period.
+- The σ<sub>τ</sub> statistics in the paper use the 8,732 of these trials that also have valid GRF on at least half of their frames (`grf_valid_frac` >= 0.5). The paper calls them the trials with released σ<sub>τ</sub>. The column `n_with_uncertainty` of `subjects.csv` holds the older v1.1 count (8,652 trials in total), so use `has_uncertainty` in `manifest.csv` instead.
 
 ## Demo gallery
 
@@ -94,25 +95,32 @@ The trial files store SKEL parameters (`poses`, `betas`, `trans`), not meshes. R
 ### 1. Download the data
 
 ```bash
+pip install -U huggingface_hub
 hf download kwonjoon/ForceBody --repo-type dataset --local-dir ForceBody
 ```
 
-The dataset is about 46 GB (10,386 trial files plus tables and subject models), hosted at https://huggingface.co/datasets/kwonjoon/ForceBody.
+The full dataset is about 46 GB (43 GiB) with 10,386 trial files plus tables and subject models. It is hosted at https://huggingface.co/datasets/kwonjoon/ForceBody. Reserve about 50 GB of free disk space. No Hugging Face login is needed. An `HF_TOKEN` only raises the rate limit.
 Croissant metadata with Responsible AI fields: [croissant.json](https://huggingface.co/datasets/kwonjoon/ForceBody/resolve/main/croissant.json).
+
+To try one trial first (9 MB), run this command instead of the `hf download` line above. Steps 2 and 3 then run unchanged.
+
+```bash
+hf download kwonjoon/ForceBody trials/Moore2015/S10/Moore2015_S10_walk_014.npz --repo-type dataset --local-dir ForceBody
+```
 
 ### 2. Install the loader
 
-Run this step in the same folder as step 1, so that `ForceBody/` and the repository are side by side.
+Run these commands in the folder where you ran step 1, so that `ForceBody/` and `ForceBody-NeurIPS-ED-2026/` are side by side.
 
 ```bash
-git clone https://github.com/DominoAI-Lab/ForceBody-NeurIPS-ED-2026.git
+git clone --depth 1 https://github.com/DominoAI-Lab/ForceBody-NeurIPS-ED-2026.git
 cd ForceBody-NeurIPS-ED-2026/code
 pip install numpy
 ```
 
 ### 3. Load a trial
 
-`forcebody_io.py` needs only NumPy. Run it from `ForceBody-NeurIPS-ED-2026/code/`.
+`forcebody_io.py` needs only NumPy. Run Python in `ForceBody-NeurIPS-ED-2026/code/`. The data folder of step 1 is then `../../ForceBody`.
 
 ```python
 import forcebody_io as fio
@@ -123,33 +131,37 @@ poses   = d["poses"]               # [T, 46] SKEL pose (rad), kinematics-pass fi
 trans   = d["trans"]               # [T, 3]  SKEL root translation (m)
 betas   = d["betas"]               # [10]    SKEL shape
 grf     = d["grf_aligned"]         # [T, C, 3] GRF (N), SKEL world frame, y up
-tau     = d["tau_selfconsistent"]  # [T, 37] joint torque (N m), OpenSim DOF order
-sigma   = d["sigma_tau"]           # [T, 37] torque uncertainty (N m)
+tau     = d["tau_selfconsistent"]  # [T, 37] inverse dynamics, OpenSim DOF order: columns 0-5 root residuals (N m, N), 6-36 joint torques (N m)
+sigma   = d["sigma_tau"]           # [T, 37] torque uncertainty, same columns
 m       = float(d["mass_kg_dynamics"])
 
-ok = d["mc_frame_ok"] & bool(d["torque_label_usable"])   # frames where tau and sigma_tau are usable
-tau_nmkg, sigma_nmkg = tau[ok] / m, sigma[ok] / m
+ok = d["mc_frame_ok"] & bool(d["torque_label_usable"])   # frame mask and trial flag: tau and sigma_tau usable
+tau_nmkg, sigma_nmkg = tau[ok, 6:] / m, sigma[ok, 6:] / m  # joint torques and their uncertainty (N m/kg)
+print(tau_nmkg.shape, sigma_nmkg.shape)
 ```
 
 `pose_source` is required. Use `"pass0"` (alias `"kin"`) for force and torque estimation, and `"pass2"` (alias `"dyn"`) for motion generation with force labels. `load_trial` maps the chosen set to the common keys `poses`, `trans`, `joints`, `q`, `qd`, `qdd`, `addb_joints` and adds `pose_usable` and `pose_source`. `fio.ALLOWED_INPUT_FIELDS` and `fio.LEAKY_INPUT_FIELDS` list the allowed and refused model inputs.
 
 ### 4. Visualize
 
+Use Python 3.9 to 3.12.
+
 ```bash
+python -m pip install -U pip
 pip install -r requirements_visualize.txt
 export SKEL_MODEL_PATH=/path/to/skel_models   # folder with skel_male.pkl and skel_female.pkl from step 0
 python visualize.py --npz ../../ForceBody/trials/Moore2015/S10/Moore2015_S10_walk_014.npz --mode png --pose_source pass0
 python visualize.py --npz ../../ForceBody/trials/Moore2015/S10/Moore2015_S10_walk_014.npz --mode mp4 --pose_source pass2
 ```
 
-Options are `--skel_model` (default `$SKEL_MODEL_PATH`), `--out`, `--fps` (default 20) and `--max-frames` (default 150). The renderer draws the SKEL body coloured by `tau_selfconsistent` and GRF arrows at the centre of pressure.
+Main options are `--skel_model` (default `$SKEL_MODEL_PATH`), `--out`, `--fps` (default 20), `--max-frames` (default 150) and `--realtime`. Outputs are a 1120x624 PNG and a 640x704 MP4. `code/VISUALIZATION.md` lists all options. The renderer draws the SKEL body coloured by `tau_selfconsistent` and GRF arrows at the centre of pressure.
 Rendering needs PyTorch, pyrender and the SKEL package and model. See `code/VISUALIZATION.md`.
 
 ## Benchmark
 
 Two tasks predict forces from SKEL motion. T-τ predicts joint torques and T-GRF predicts per-foot ground reaction forces. Results below are the camera-ready numbers.
 
-**Protocol.** Dataset release 1.2.1 (benchmark data identical in 1.3.0 except 40 renamed Hamner2013 keys). Person-level split with 8,374 train, 1,098 val and 914 test trials. Inputs come from the kinematics-pass fit only. Checkpoints are selected on val and the test split is scored once. Mean ± standard deviation over three seeds. 20 scored DOFs on 14 joints. R = RMSE (N m/kg), M = MAE (N m/kg), P = Pearson correlation.
+**Protocol.** Dataset release 1.2.1. The benchmark data are identical in 1.3.0, except that the study Hammer2013 is renamed to Hamner2013 (40 trial keys and the `study` and `person_id` strings). Person-level split with 8,374 train, 1,098 val and 914 test trials. Inputs come from the kinematics-pass fit only. Checkpoints are selected on val and the test split is scored once. Mean ± standard deviation over three seeds. 20 scored DOFs on 14 joints. R = RMSE (N m/kg), M = MAE (N m/kg), P = Pearson correlation.
 
 ### Joint torque prediction (paper Table 4)
 
@@ -208,6 +220,8 @@ The benchmark card (`code/benchmark/BENCHMARK.md`), the machine-readable spec (`
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | Trials | 5,547 | 4,167 | 272 | 208 | 75 | 71 | 24 | 22 |
 
+The column names follow the paper. In `activity_recovered` of `manifest.csv`, Sit-to-stand is `sit_stand` and Squats is `squat`. Mixed groups seven classes: `yoga` (86), `gait_transition` (64), `sport` (24), `dance` (21), `taichi` (9), `stretch` (2) and `leg_exercise` (2).
+
 The data are imbalanced. Running and walking make up 93.5% of the trials, and Carter2023 contributes 67.5%. Results on rare activities rest on few trials. The vanderZee2022 subjects have unreported sex, and their SKEL model is chosen by height. The data include one stroke subject (Li2021) and four subjects after total knee arthroplasty (Fregly2012). These are reported as a separate stratum.
 
 ## Repository contents
@@ -222,13 +236,15 @@ The data are imbalanced. Running and walking make up 93.5% of the trials, and Ca
 | SKEL fitting pipeline | not released |
 | Monte Carlo uncertainty pipeline | not released (Section 3.2 and Appendix C of the paper describe the procedure) |
 
+Report errors and questions on the [GitHub issues page](https://github.com/DominoAI-Lab/ForceBody-NeurIPS-ED-2026/issues).
+
 
 ## License
 
 - **Code** in this repository is released under the [MIT license](LICENSE).
 - **Data** are released under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/). Commercial use is not permitted.
 - Fields derived from AddBiomechanics (forces, AddB kinematics, torques, uncertainty, metadata) build on the AddBiomechanics dataset (CC BY 4.0). Cite AddBiomechanics and every source study you use.
-- SKEL-derived fields (`poses*`, `trans*`, `joints*`, `betas`, `skel_gender`) are also subject to the [SKEL model license](https://skel.is.tue.mpg.de/), which allows non-commercial scientific research only. Building meshes from these fields requires the SKEL model, which you obtain from its authors.
+- SKEL-derived data are also subject to the [SKEL model license](https://skel.is.tue.mpg.de/), which allows non-commercial scientific research only. These are the trial fields `poses*`, `trans*`, `betas`, `skel_gender` and `joints*`, the `persons.csv` columns `beta_0` to `beta_9` and `shapy_*`, and `marker_vertex_map.json`. Building meshes from these fields requires the SKEL model, which you obtain from its authors.
 - The data include health information (stroke, total knee arthroplasty). Do not attempt to re-identify persons. ForceBody is not intended for clinical decisions.
 
 ## Citation
@@ -248,8 +264,10 @@ Please also cite AddBiomechanics, SKEL and the source studies you use.
 @inproceedings{werling2024addbiomechanics,
   title     = {AddBiomechanics Dataset: Capturing the Physics of Human Motion at Scale},
   author    = {Werling, Keenon and Kaneda, Janelle and Tan, Tian and Agarwal, Rishi and Skov, Six and Van Wouwe, Tom and Uhlrich, Scott and Bianco, Nicholas and Ong, Carmichael and Falisse, Antoine and Sapkota, Shardul and Chandra, Aidan and Carter, Joshua and Preatoni, Ezio and Fregly, Benjamin and Hicks, Jennifer and Delp, Scott and Liu, C. Karen},
-  booktitle = {ECCV},
+  booktitle = {European Conference on Computer Vision (ECCV 2024)},
+  series    = {Lecture Notes in Computer Science},
   pages     = {490--508},
+  publisher = {Springer},
   year      = {2024},
   doi       = {10.1007/978-3-031-73223-2_27}
 }

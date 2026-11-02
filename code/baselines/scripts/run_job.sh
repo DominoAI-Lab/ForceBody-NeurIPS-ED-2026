@@ -10,6 +10,8 @@
 #   COND  = A | B (ablation only; C is the main setting run by JOB=tau)
 #   PY    = python executable (default: python)
 #   GPU   = optional GPU index; sets CUDA_VISIBLE_DEVICES (Mamba2 kernels need the process's cuda:0)
+#   EVAL_CHUNK = optional, passed to train.py as --eval_chunk (tau, ablation). Use 16 for the Transformer on GPUs
+#           with 32 GB or less (same result up to float rounding, less GPU memory)
 #
 # Example: JOB=tau MODEL=transformer CACHE=cache RUNS=runs/seed1 bash scripts/run_job.sh
 set -euo pipefail
@@ -18,12 +20,14 @@ PY=${PY:-python}
 CACHE=$(realpath -m "$CACHE"); RUNS=$(realpath -m "$RUNS")
 SEED_ARG=""
 if [ -n "${SEED:-}" ]; then SEED_ARG="--seed $SEED"; fi
+EC_ARG=""
+if [ -n "${EVAL_CHUNK:-}" ]; then EC_ARG="--eval_chunk $EVAL_CHUNK"; fi
 if [ -n "${GPU:-}" ]; then export CUDA_DEVICE_ORDER=PCI_BUS_ID CUDA_VISIBLE_DEVICES=$GPU; fi
 cd "$(dirname "$0")/.."
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 case "$JOB" in
   tau)
-    $PY -u train.py --model $MODEL --condition C --device cuda:0 --patience 80 $SEED_ARG \
+    $PY -u train.py --model $MODEL --condition C --device cuda:0 --patience 80 $SEED_ARG $EC_ARG \
         --cache_dir $CACHE/tau --ckpt_dir $RUNS/tau/ckpt --log_dir $RUNS/tau/logs
     for s in val test; do
       $PY -u predict_tau.py --model $MODEL --ckpt $RUNS/tau/ckpt/${MODEL}_C_best.pt --cache_dir $CACHE/tau \
@@ -42,7 +46,7 @@ case "$JOB" in
     $PY -u grf/train_grf.py --cell G_${MODEL} --arch $MODEL $SEED_ARG --cache_dir $CACHE/grf --out_dir $RUNS/grf ;;
   ablation)
     : "${COND:?}"
-    $PY -u train.py --model $MODEL --condition $COND --device cuda:0 --patience 80 $SEED_ARG \
+    $PY -u train.py --model $MODEL --condition $COND --device cuda:0 --patience 80 $SEED_ARG $EC_ARG \
         --cache_dir $CACHE/tau --ckpt_dir $RUNS/tau/ckpt --log_dir $RUNS/tau/logs
     for s in val test; do
       $PY -u predict_tau.py --model $MODEL --condition $COND --ckpt $RUNS/tau/ckpt/${MODEL}_${COND}_best.pt \

@@ -3,8 +3,8 @@
 ForceBody (since v1.2) ships two SKEL pose sets per trial (see DETAILS.md, "Choosing a pose source"):
 
   pose_source  alias  fields used                                            fitted to
-  'pass0'      'kin'  poses, trans, joints, q_kin, qd_kin, qdd_kin,          AddB kinematics pass (pass 0 + 30 Hz
-                      addb_joints_kin                                        filter = pass 1); never saw the force plates
+  'pass0'      'kin'  poses, trans, joints, q_kin, qd_kin, qdd_kin,          AddB kinematics pass (pass 0 + the 30 Hz
+                      addb_joints_kin                                        filter of pass 1); never saw the force plates
   'pass2'      'dyn'  poses_dyn, trans_dyn, joints_dyn, q_gt, qd_gt, qdd_gt,  AddB dynamics pass (pass 2); adjusted by
                       addb_joints_dyn                                        AddBiomechanics to agree with the measured GRF
 
@@ -66,11 +66,13 @@ ALLOWED_INPUT_FIELDS = ('poses', 'trans', 'joints', 'q_kin', 'qd_kin', 'qdd_kin'
                         'skel_gender', 'mass_kg', 'height_m', 'sex', 'age')
 LEAKY_INPUT_FIELDS = ('poses_dyn', 'trans_dyn', 'joints_dyn', 'addb_joints_dyn', 'q_gt', 'qd_gt', 'qdd_gt', 'tau_*',
                       'mu_tau', 'sigma_tau', 'percentiles', 'grf*', 'cop*', 'contact_*', 'grf_valid_mask',
-                      # S19 F8: GRF-derived fields
+                      # fields derived from the GRF
                       'mass_kg_grf', 'mass_dyn_scale', 'mass_kg_dynamics*', 'cadence_spm_grf', 'stride_time_s_med',
                       'duty_factor_*', 'support_side*', 'caption_support_side', 'floor_height_m', 'speed_belt_grf_mps',
+                      'mass_dyn_used_kg', 'mass_kg_grf_*', 'chair_contact', 'floor_tilt_*', 'addb_belt_speed_mps',
+                      'speed_mps', 'tilt_deg',
                       'mc_*', 'eval_*', 't2m_*', 's8b_*', 'qc_*', 'force_label_usable*', 'torque_label_usable',
-                      'poses_dyn_usable*', 'kin_frame_ok', 'gait_events',
+                      'poses_dyn_usable*', 'q_gt_usable', 'usable_provisional', 'kin_frame_ok', 'gait_events',
                       # v1.2 fix rounds: every field of the dynamics-pass pose set (dyn_target_source follows the
                       # GRF-valid windows)
                       'dyn_*', '*_dyn')

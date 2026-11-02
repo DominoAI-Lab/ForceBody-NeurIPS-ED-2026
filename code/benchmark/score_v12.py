@@ -41,8 +41,9 @@ assert GRF_GROUPS['horizontal'] == SPEC['tasks']['T-GRF']['channel_groups']['hor
 
 # ---------------------------------------------------------------------------------------------- paper-style reference
 def paper_style_metrics(pred_v, gt_v, mass_v, dof_idx):
-    """Paper Table 4 formula (eval_table4.metrics_subset): N m errors per DOF over the given frames divided by the
-    mean mass of those frames, PCC per DOF (0 when undefined), each averaged over the DOFs. Reference only."""
+    """Formula of the submitted-paper Table 4 scoring (code not released): N m errors per DOF over the given
+    frames divided by the mean mass of those frames, PCC per DOF (0 when undefined), each averaged over the DOFs.
+    Reference only."""
     p, g = pred_v[:, dof_idx], gt_v[:, dof_idx]
     diff = p - g
     mass_mean = mass_v.mean()
@@ -82,9 +83,9 @@ VAR_REL_TOL = float(SPEC['metrics']['pcc_zero_variance']['rel_tol'])
 
 def _metrics(S):
     """S [..., C, 8] -> rmse, mae, pcc each [..., C].
-    PCC rule (S19 F7): NaN (left out of the group mean, counted) only when the LABEL variance is 0; a constant prediction
-    against a varying label scores 0. A variance counts as 0 when it is at most VAR_REL_TOL times the sum of squares
-    (float64 cancellation of a constant series, OURS)."""
+    PCC rule (spec_v12.json metrics): NaN (left out of the group mean, counted) only when the LABEL variance is 0;
+    a constant prediction against a varying label scores 0. A variance counts as 0 when it is at most VAR_REL_TOL
+    times the sum of squares (float64 cancellation of a constant series, authors' choice)."""
     n = S[..., 0]
     with np.errstate(invalid='ignore', divide='ignore'):
         rmse = np.sqrt(S[..., 1] / n)
@@ -231,7 +232,7 @@ def score(cache, preds, task, n_boot=N_BOOT, seed=SEED):
 
 
 def table_row(result, model_name, group=None):
-    """One markdown row for BENCHMARK.md (pooled R / M / P with CI, study macro P)."""
+    """One single-run markdown row: pooled RMSE [95% CI], MAE, PCC [95% CI], then study-macro RMSE and PCC."""
     if result['leaky_input'] or not result['official_table_eligible']:
         raise ValueError('leaky or non-test results do not go into the official tables')
     g = group or ('all' if result['task'] == 'T-tau' else 'all')

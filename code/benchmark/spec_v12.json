@@ -1,9 +1,10 @@
 {
  "spec_version": "forcebody-bench-1.2.0",
- "dataset_version": "ForceBody 1.3.0 (benchmark inputs, labels, masks and splits identical to 1.2.0 / 1.2.1; 40 Hamner2013 trial keys renamed in 1.3.0)",
+ "dataset_version": "ForceBody 1.3.0 (benchmark inputs, labels, masks and splits identical to 1.2.0 / 1.2.1. In 1.3.0 the study Hammer2013 is renamed to Hamner2013, which changes its 40 trial keys and its study and person_id strings)",
  "date": "2026-09-30",
  "decisions": {
   "D0prime": "pose_source selects the pose set (pass0 | pass2). Default pass0. pass2 is allowed but its results carry leaky_input=True and are excluded from the official tables.",
+  "D18": "The pathological stratum (eval_stratum == pathological: Fregly2012 TKA, Li2021 stroke) is scored and reported separately and never enters the headline aggregation.",
   "D21": "Labels are normalized by mass_kg_dynamics; model inputs use mass_kg (recorded).",
   "D24": "Paper Table 3 (camera-ready): the ForceBody rows are the baselines retrained on dataset 1.2.1 over three seeds. The two AddB rows are taken from the reviewed build as a reference, not a matched comparison. They used dynamics-pass (pass 2) kinematics as input.",
   "D25": "Paper Tables 4, 5, 14 and 15 (camera-ready) are the baselines retrained on dataset 1.2.1 with the paper code, mean and standard deviation over three seeds, aggregation all_strata. BENCHMARK.md (Results) lists the same runs.",
@@ -21,18 +22,18 @@
  "leakage": {
   "forbidden_inputs": "forcebody_io.LEAKY_INPUT_FIELDS",
   "rule": "allowlist: model inputs are only the benchmark inputs below (tasks.*.inputs), all derived from the pass-0 pose set, betas and the recorded mass / height (forcebody_io.ALLOWED_INPUT_FIELDS for the underlying fields). LEAKY_INPUT_FIELDS is a denylist safety net",
-  "forbidden_inputs_list": ["poses_dyn", "trans_dyn", "joints_dyn", "addb_joints_dyn", "q_gt", "qd_gt", "qdd_gt", "tau_*", "mu_tau", "sigma_tau", "percentiles", "grf*", "cop*", "contact_*", "grf_valid_mask", "mass_kg_grf", "mass_dyn_scale", "mass_kg_dynamics*", "cadence_spm_grf", "stride_time_s_med", "duty_factor_*", "support_side*", "caption_support_side", "floor_height_m", "speed_belt_grf_mps", "mc_*", "eval_*", "t2m_*", "s8b_*", "qc_*", "force_label_usable*", "torque_label_usable", "poses_dyn_usable*", "kin_frame_ok", "gait_events"],
+  "forbidden_inputs_list": ["poses_dyn", "trans_dyn", "joints_dyn", "addb_joints_dyn", "q_gt", "qd_gt", "qdd_gt", "tau_*", "mu_tau", "sigma_tau", "percentiles", "grf*", "cop*", "contact_*", "grf_valid_mask", "mass_kg_grf", "mass_dyn_scale", "mass_kg_dynamics*", "cadence_spm_grf", "stride_time_s_med", "duty_factor_*", "support_side*", "caption_support_side", "floor_height_m", "speed_belt_grf_mps", "mass_dyn_used_kg", "mass_kg_grf_*", "chair_contact", "floor_tilt_*", "addb_belt_speed_mps", "speed_mps", "tilt_deg", "mc_*", "eval_*", "t2m_*", "s8b_*", "qc_*", "force_label_usable*", "torque_label_usable", "poses_dyn_usable*", "q_gt_usable", "usable_provisional", "kin_frame_ok", "gait_events", "dyn_*", "*_dyn"],
   "enforcement": "build_bench_cache_v12.check_inputs raises ValueError for any input on the denylist and for any input that is not a benchmark input (allowlist)"
  },
  "splits": {
   "column": "split_addb_val (manifest.csv)",
   "values": {"train": "split_addb == train and not a validation person", "val": "split_addb_val == val (subset of the split_addb train persons)", "test": "split_addb == test"},
   "unit": "person",
-  "persons_file": "split_addb_val_persons.csv (build input, metadata/)",
+  "persons_file": "none. The validation persons are the persons with split_addb_val == val in manifest.csv",
   "protocol": "Select checkpoints and hyperparameters on val only. Score test once."
  },
  "constants": {
-  "G_mps2": {"value": 9.81, "source": "forces_lib.py:70 and qc_v12.py:45 of the v1.2 build (G = 9.81, the constant of build_v11.py and the v1.1 QC)"}
+  "G_mps2": {"value": 9.81, "source": "the gravity constant of the ForceBody force and QC code (v1.1 and v1.2 builds)"}
  },
  "tasks": {
   "T-tau": {
@@ -70,7 +71,7 @@
     "channels": ["r_x", "r_y", "r_z", "l_x", "l_y", "l_z"]
    },
    "grm_definition": "The ground reaction moment (GRM) in ForceBody is contact_torque (addb_lab) / contact_torque_aligned (skel_world): the free moment per contact, in N m, acting at the centre of pressure (cop / cop_aligned_foot). The resultant moment of a foot about a point p is (cop - p) x grf + contact_torque. GRM and CoP are not scored in T-GRF v1.2 (Carter2023 running free moments are about five times Hamner2013). Paper Table 3 GRF is the sum over the two feet of the 3D error norm in N/kg (grf_paper_metric in code/baselines/aggregate.py). The secondary group 'sum_feet' scores the two-foot total force, a different quantity.",
-   "mask": "eval_grf_frame_ok AND eval_grf_trial_ok (eval_grf_frame_ok = grf_frame_ok AND kin_frame_ok; eval_grf_trial_ok excludes force-unusable, single-channel, duplicate / Han2023 trimmed-copy, static / transition / pause and qc_mass_dyn_vs_grf_flag trials). grf_valid_mask covers measured frames only; on Carter2023 running it excludes the flight frames, so T-GRF on running is scored on stance frames",
+   "mask": "eval_grf_frame_ok AND eval_grf_trial_ok (eval_grf_frame_ok = grf_frame_ok AND kin_frame_ok; eval_grf_trial_ok excludes force-unusable, single-channel, duplicate / Han2023 trimmed-copy, static / transition / pause and qc_mass_dyn_vs_grf_flag trials). grf_valid_mask covers the frames with a measured force, and a zero force in the flight phase counts as measured. On Carter2023 running it covers the flight frames in almost all trials, so T-GRF on running scores stance and flight frames. In 21 of the 5,507 Carter2023 running trials AddB marks every flight frame as missing GRF, and only stance frames are scored there.",
    "channel_groups": {
     "all": {"idx": [0, 1, 2, 3, 4, 5], "note": "both feet, 3 components"},
     "vertical": {"idx": [1, 4]},
@@ -90,7 +91,7 @@
   "pcc_zero_variance": {
    "rel_tol": 1e-10,
    "rule": "a variance counts as 0 when sum((x - mean)^2) <= rel_tol * sum(x^2) (float64 cancellation of a constant series)",
-   "source": "OURS (numerical tolerance, S19 F7)"
+   "source": "authors' choice (numerical tolerance), no citation claimed"
   },
   "group_value": "mean over the channels of the group (as in paper Table 4)",
   "aggregations": {
@@ -107,12 +108,12 @@
    "n_boot": 1000,
    "ci": [2.5, 97.5],
    "seed": 0,
-   "source": "OURS (user decision U4, 2026-09-30): 1000 person-level resamples, percentile interval, seed 0. No citation is claimed for these values."
+   "source": "authors' choice: 1000 person-level resamples, percentile interval, seed 0. No citation is claimed for these values."
   },
   "paper_style_reference": {
-   "function": "score_v12.paper_style_metrics == eval_table4.metrics_subset (paper package 20260928_torque_benchmark_repro/ForceBody_torque_benchmark/eval_table4.py)",
+   "function": "score_v12.paper_style_metrics (the formula of the scoring function of the submitted-paper evaluation code, which is not released)",
    "definition": "per DOF: RMSE and MAE of N m errors over GRF-valid frames divided by the mean body mass of those frames, PCC per DOF, averaged over the DOF group. Used only to show that the scorer reproduces the submitted-paper numbers on the submitted-paper inputs; not the v1.2 metric.",
-   "gate": "max abs difference <= 1e-6 on the paper test cache and the verify_run checkpoints"
+   "gate": "max abs difference <= 1e-6 against the submitted-paper scoring function on the submitted-paper test cache and checkpoints"
   }
  },
  "results_json": {

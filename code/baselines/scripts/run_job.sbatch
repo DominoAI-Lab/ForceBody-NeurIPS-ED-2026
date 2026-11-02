@@ -5,7 +5,8 @@
 #SBATCH --time=2-00:00:00
 #SBATCH --output=%x_%j.log
 # Slurm wrapper of run_job.sh. Add the partition / account lines of your cluster.
-# The paper runs used one GPU with >= 40 GB for the Transformer (full-trial validation forward). The UW fine-tune
+# The paper runs used one GPU with >= 40 GB for the Transformer (full-trial validation forward). On a GPU with 32 GB or
+# less, add EVAL_CHUNK=16 to --export (passed to train.py as --eval_chunk 16). The UW fine-tune
 # runs to --total_iters (see README). It took about 8 to 10 hours per seed on our GPUs, and the 2-day limit leaves room for
 # slower GPUs. The tau and grf jobs are shorter. Lower the limit for them with 'sbatch --time=...' if your queue
 # favours short jobs.

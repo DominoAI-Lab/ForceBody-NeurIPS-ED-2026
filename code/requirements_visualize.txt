@@ -1,6 +1,8 @@
-# visualize.py (ForceBody renderer): pip install -r requirements_visualize.txt
+# visualize.py (ForceBody renderer): pip install -r requirements_visualize.txt (Python 3.9 to 3.12)
 # Reading the trial files needs only numpy (forcebody_io.py).
-numpy
+# numpy<2: the pinned SKEL commit below requires moderngl-window 2.4.6, which needs numpy<2. Without this line the pip
+# resolver can backtrack for a long time and fail (ResolutionTooDeep) on Python 3.12. numpy 1.26 has no wheels for 3.13.
+numpy<2
 scipy
 torch
 pyrender

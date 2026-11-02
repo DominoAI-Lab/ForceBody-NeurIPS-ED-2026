@@ -5,8 +5,13 @@ camera, the pyrender scene, the GRF arrows and the torque colouring of the skele
 weights. It needs the public SKEL package (https://github.com/MarilynKeller/SKEL) and the SKEL model files
 (skel_male.pkl, skel_female.pkl, version 1.1.1) from https://skel.is.tue.mpg.de/ under the SKEL license.
 
-Display frame: vertices are centred on the camera target and y is flipped, then each mesh is turned by 180 deg about x
-in render_scene (pyrender camera convention). Positions passed to make_grf_arrow are in this display frame.
+Display frame: vertices are centred on the camera target and turned by 180 deg about x (y and z flipped, a proper
+rotation, so back-face culling and the depth order agree). render_scene turns each mesh by the view angle about the
+vertical axis, moves it to the camera distance and turns it back by 180 deg about x (pyrender camera convention).
+Positions and directions passed to make_grf_arrow are in this display frame.
+
+Camera: fixed in the SKEL world frame (y up). 'view 0 deg' sits on the +z side and looks along -z. 'view 60 deg' is
+the same camera turned 60 deg about the vertical axis towards +x. The views do not follow the body heading.
 """
 import os
 import pickle
@@ -17,6 +22,7 @@ import trimesh  # noqa: E402
 import pyrender  # noqa: E402
 
 SKEL_REPO = 'https://github.com/MarilynKeller/SKEL'
+SKEL_COMMIT = 'c32cf16581295bff19399379efe5b776d707cd95'   # same pin as requirements_visualize.txt
 SKEL_SITE = 'https://skel.is.tue.mpg.de/'
 
 # AddB joint name -> DOF start, DOF count in the 37-DOF torque vector (tau_selfconsistent)
@@ -30,9 +36,11 @@ JOINT_DOF_MAPPING = [
     ("radioulnar_l", 34, 1), ("radius_hand_l", 35, 2),
 ]
 
-# AddB joint -> SKEL joint indices that take its torque colour
+# AddB joint -> SKEL joint indices that take its torque colour. SKEL joint 0 (pelvis) is not listed and is drawn grey:
+# the ground_pelvis entry of the torque vector is the root residual, which mixes N m and N (excluded from the ranking
+# in build_torque_percentiles for the same reason).
 ADDB_TO_SKEL_JOINT_MAP = {
-    'ground_pelvis': [0], 'hip_r': [1], 'walker_knee_r': [2],
+    'hip_r': [1], 'walker_knee_r': [2],
     'ankle_r': [3], 'subtalar_r': [4], 'mtp_r': [5],
     'hip_l': [6], 'walker_knee_l': [7], 'ankle_l': [8],
     'subtalar_l': [9], 'mtp_l': [10],
@@ -64,8 +72,14 @@ _PLASMA_COLORS = [
 ]
 _GRAY = np.array([0.85, 0.85, 0.85])
 
-# view name -> rotation about the vertical axis in degrees (None = no rotation)
-VIEWS = {'front': None, 'side60d': -60.0}
+# view name -> rotation of the display frame about the vertical axis in degrees (module docstring, "Camera")
+VIEWS = {'view 0 deg': 0.0, 'view 60 deg': 60.0}
+
+# GRF arrows: length per newton, smallest force drawn, colours (display choices)
+ARROW_SCALE = 0.0009              # m per N
+ARROW_MIN_N = 10.0
+GRF_RGB = (0.15, 0.85, 0.15)      # foot channel, masks hold
+MASKED_RGB = (0.45, 0.45, 0.45)   # any channel on a masked frame
 
 
 # ---------------------------------------------------------------------------
@@ -92,8 +106,9 @@ def import_skel():
     try:
         from skel.skel_model import SKEL
     except ImportError as e:
-        raise ImportError(f'The SKEL package is not importable ({e}). Install it from {SKEL_REPO}: '
-                          f'pip install git+{SKEL_REPO}.git, or clone it and run pip install -e . in the clone') from e
+        raise ImportError(f'The SKEL package is not importable ({e}). Install the pinned commit (VISUALIZATION.md): '
+                          f'pip install -r requirements_visualize.txt, or SKEL alone with '
+                          f'pip install --no-deps "git+{SKEL_REPO}.git@{SKEL_COMMIT}"') from e
     return SKEL
 
 
@@ -222,54 +237,79 @@ def compute_lbs_torque_colors(tau_frame, lbs_weights, torque_percentiles=None):
 # Camera, geometry, scene
 # ---------------------------------------------------------------------------
 
-def compute_camera(skel_data, frame_indices, size=768, focal=5000):
-    """Camera that frames the skin vertices of all given frames.
+def view_rotation(view):
+    """3x3 rotation of the display frame about the vertical axis for `view` (a VIEWS key)."""
+    return trimesh.transformations.rotation_matrix(np.radians(VIEWS[view]), [0, 1, 0])[:3, :3]
+
+
+def compute_camera(skel_data, frame_indices, size=768, focal=5000, views=('view 0 deg',), points=None, fill=0.80):
+    """Cameras that frame the skin vertices of the given frames plus `points` [M,3] (SKEL world frame), for example the
+    CoP points and arrow tips that are drawn.
+
+    Each view is centred on the bounding box of these points as seen in that view. All views share one camera distance:
+    the largest extent over the views fills `fill` of the image, measured at the depth of the point nearest to the
+    camera, so perspective cannot push a point out of the frame and the panels have the same scale.
 
     Returns:
-        cam_t [3] camera translation, K4 [fx, fy, cx, cy], global_center [3] (centre of the skin vertices).
+        {view: (cam_t [3] camera translation, K4 [fx, fy, cx, cy], global_center [3] bounding-box centre)}
     """
-    all_skin = np.concatenate([skel_data['skin_v'][fi] for fi in frame_indices], axis=0)
-    gc = all_skin.mean(axis=0)
-    ac = all_skin - gc
-    ac[:, 1] *= -1
-    y_extent = ac[:, 1].max() - ac[:, 1].min()
-    x_extent = ac[:, 0].max() - ac[:, 0].min()
-    tz = focal * max(y_extent, x_extent) / (size * 0.80)
-    cam_t = np.array([0.0, 0.0, tz])
+    pts = [skel_data['skin_v'][fi] for fi in frame_indices]
+    if points is not None and len(points):
+        pts.append(np.asarray(points, dtype=np.float64).reshape(-1, 3))
+    pts = np.concatenate(pts, axis=0)
+    gc = (pts.min(axis=0) + pts.max(axis=0)) / 2
+    disp = prep_vertices(pts, gc)
+    rotated = {v: disp @ view_rotation(v).T for v in views}
+    # depth of a point = its display z + tz, so the nearest point has the smallest z
+    tz = max(focal * max(np.ptp(p[:, 0]), np.ptp(p[:, 1])) / (size * fill) - min(p[:, 2].min(), 0.0)
+             for p in rotated.values())
     K4 = [focal, focal, size // 2, size // 2]
-    return cam_t, K4, gc
+    cams = {}
+    for v, p in rotated.items():
+        ctr = (p.min(axis=0) + p.max(axis=0)) / 2
+        cams[v] = (np.array([-ctr[0], -ctr[1], tz]), K4, gc)
+    return cams
 
 
 def prep_vertices(v, global_center):
-    """Centre vertices [N,3] on global_center and flip y (display frame)."""
+    """Centre vertices [N,3] on global_center and turn them 180 deg about x (y and z flipped, display frame)."""
     out = v - global_center
-    out[:, 1] *= -1
+    out[:, 1:] *= -1
     return out
 
 
-def make_grf_arrow(cop_pos, force_vec, scale=0.0009, z_offset=-0.08):
-    """GRF arrow mesh (shaft + sphere head) from cop_pos along force_vec (display frame), or None below 10 N.
+def display_direction(vec):
+    """A direction [3] (for example a force) in the display frame: y and z flipped as in prep_vertices."""
+    out = np.array(vec, dtype=np.float64)
+    out[1:] *= -1
+    return out
 
-    The arrow length is |F| * scale (m per N) and the arrow is moved by z_offset towards the camera.
+
+def make_grf_arrow(cop_pos, force_vec, view, scale=ARROW_SCALE, z_offset=-0.08):
+    """GRF arrow mesh (shaft + sphere head) from cop_pos along force_vec (display frame), or None below ARROW_MIN_N.
+
+    The arrow length is |F| * scale (m per N). The arrow is moved by z_offset along the viewing axis of `view` (in
+    camera space, so it moves towards the camera and not sideways), which keeps it in front of the foot it starts at.
     """
     mag = np.linalg.norm(force_vec)
-    if mag < 10:
+    if mag < ARROW_MIN_N:
         return None
     end = cop_pos + force_vec / mag * (mag * scale)
-    offset = np.array([0.0, 0.0, z_offset])
+    offset = view_rotation(view).T @ np.array([0.0, 0.0, z_offset])
     shaft = trimesh.creation.cylinder(radius=0.008, segment=np.array([cop_pos + offset, end + offset]))
     head = trimesh.creation.uv_sphere(radius=0.016, count=[8, 8])
     head.apply_translation(end + offset)
     return trimesh.util.concatenate([shaft, head])
 
 
-def _materials():
-    return {
-        'skin_trans': pyrender.MetallicRoughnessMaterial(
-            metallicFactor=0.0, alphaMode='BLEND', baseColorFactor=(0.537, 0.765, 0.922, 0.55)),
-        'grf': pyrender.MetallicRoughnessMaterial(
-            metallicFactor=0.0, roughnessFactor=0.9, alphaMode='OPAQUE', baseColorFactor=(0.15, 0.85, 0.15, 1.0)),
-    }
+def _skin_material():
+    return pyrender.MetallicRoughnessMaterial(
+        metallicFactor=0.0, alphaMode='BLEND', baseColorFactor=(0.537, 0.765, 0.922, 0.55))
+
+
+def _arrow_material(rgb):
+    return pyrender.MetallicRoughnessMaterial(
+        metallicFactor=0.0, roughnessFactor=0.9, alphaMode='OPAQUE', baseColorFactor=(*rgb, 1.0))
 
 
 def _raymond_lights():
@@ -291,7 +331,7 @@ def _raymond_lights():
     return nodes
 
 
-def render_scene(meshes_list, cam_t, K4, size, view='front'):
+def render_scene(meshes_list, cam_t, K4, size, view='view 0 deg'):
     """Render a list of (trimesh, pyrender material or None) on a white background. Returns [size,size,3] uint8."""
     bg_color = np.ones((size, size, 3), dtype=np.uint8) * 255
     renderer = pyrender.OffscreenRenderer(viewport_width=size, viewport_height=size, point_size=1.0)
@@ -300,11 +340,11 @@ def render_scene(meshes_list, cam_t, K4, size, view='front'):
     scene = pyrender.Scene(bg_color=[0.0, 0.0, 0.0, 0.0], ambient_light=(0.3, 0.3, 0.3))
     for node in _raymond_lights():
         scene.add_node(node)
-    deg = VIEWS[view]
+    rot = np.eye(4)
+    rot[:3, :3] = view_rotation(view)
     for idx, (tm, mat) in enumerate(meshes_list):
         m = tm.copy()
-        if deg is not None:
-            m.apply_transform(trimesh.transformations.rotation_matrix(np.radians(deg), [0, 1, 0]))
+        m.apply_transform(rot)
         m.apply_transform(trimesh.transformations.translation_matrix(cam_t))
         m.apply_transform(trimesh.transformations.rotation_matrix(np.radians(180), [1, 0, 0]))
         if mat is not None:
@@ -319,35 +359,31 @@ def render_scene(meshes_list, cam_t, K4, size, view='front'):
     return final.astype(np.uint8)
 
 
-def render_panel_torque(skel_data, frame_indices, cam_t, K4, gc, size, view='front', lbs_weights=None,
-                        torque_percentiles=None, show_grf=True, show_skin=True, extra_meshes=()):
-    """Torque-coloured skeleton mesh, GRF arrows (green) and translucent skin for the given frames.
+def render_panel_torque(skel_data, frame_indices, cam_t, K4, gc, size, view='view 0 deg', lbs_weights=None,
+                        torque_percentiles=None, show_grf=True, show_skin=True):
+    """Torque-coloured skeleton mesh, GRF arrows and translucent skin for the given frames.
 
-    skel_data keys: skel_v, skel_f, skin_v, skin_f (from skel_meshes), tau [N,37], grf_data (list per frame of
-    (contact [C], grf [C,3], cop [C,3]) in the SKEL world frame). extra_meshes are (trimesh, material) pairs in the
-    display frame, added after the body.
+    skel_data keys: skel_v, skel_f, skin_v, skin_f (from skel_meshes), tau [N,37], grf_data (list per frame of arrows
+    (cop [3], grf [3], rgb) in the SKEL world frame, one per drawn channel).
     """
-    mat = _materials()
     tau_all = skel_data['tau']
     grf_data = skel_data.get('grf_data')
     meshes = []
     if show_grf and grf_data is not None:
         for fi in frame_indices:
-            contact, grf, cop = grf_data[min(fi, len(grf_data) - 1)]
-            for body_idx in range(len(contact)):
-                if contact[body_idx] > 0 and body_idx < len(grf):
-                    cop_centered = prep_vertices(cop[body_idx:body_idx + 1].copy(), gc)[0]
-                    grf_vec = grf[body_idx].copy()
-                    grf_vec[1] = -grf_vec[1]   # display y flip
-                    arrow = make_grf_arrow(cop_centered, grf_vec)
-                    if arrow is not None:
-                        meshes.append((arrow, mat['grf']))
+            for cop, grf, rgb in grf_data[min(fi, len(grf_data) - 1)]:
+                arrow = make_grf_arrow(prep_vertices(np.asarray(cop, np.float64)[None], gc)[0],
+                                       display_direction(grf), view)
+                if arrow is not None:
+                    meshes.append((arrow, _arrow_material(rgb)))
     for fi in frame_indices:
         sv = prep_vertices(skel_data['skel_v'][fi], gc)
         vc = compute_lbs_torque_colors(tau_all[min(fi, len(tau_all) - 1)], lbs_weights, torque_percentiles)
         colors = (np.column_stack([vc, np.ones(len(vc))]) * 255).astype(np.uint8)
         meshes.append((trimesh.Trimesh(sv, skel_data['skel_f'], vertex_colors=colors, process=False), None))
         if show_skin:
+            # reversed winding: back-face culling keeps the far half of the skin, a translucent layer behind the
+            # skeleton, so the torque colours are not washed out (display choice)
             skv = prep_vertices(skel_data['skin_v'][fi], gc)
-            meshes.append((trimesh.Trimesh(skv, skel_data['skin_f'], process=False), mat['skin_trans']))
-    return render_scene(meshes + list(extra_meshes), cam_t, K4, size, view)
+            meshes.append((trimesh.Trimesh(skv, skel_data['skin_f'][:, ::-1], process=False), _skin_material()))
+    return render_scene(meshes, cam_t, K4, size, view)

@@ -117,6 +117,9 @@ def main():
                         help="Early stopping patience (epochs without val improvement)")
     parser.add_argument("--eval_chunk", type=int, default=0,
                         help="Validation forward in sub-batches of this many trials (0 = whole batch)")
+    parser.add_argument("--num_workers", type=int, default=16,
+                        help="DataLoader workers per loader (paper runs: 16). Another value can change the random "
+                             "crops of seeded runs")
     parser.add_argument("--cache_dir", type=str, default=str(C.CACHE_DIR),
                         help="Override cache directory (train/test_cache.pt + norm_stats)")
     parser.add_argument("--ckpt_dir", type=str, default=str(C.CKPT_DIR),
@@ -160,14 +163,14 @@ def main():
 
     if is_seq:
         train_loader = get_seq_loader(train_cache, args.condition, norm_stats,
-                                      batch_size=args.batch_size, training=True)
+                                      batch_size=args.batch_size, training=True, num_workers=args.num_workers)
         val_loader = get_seq_loader(val_cache, args.condition, norm_stats,
-                                    batch_size=args.batch_size, training=False)
+                                    batch_size=args.batch_size, training=False, num_workers=args.num_workers)
     else:
         train_loader = get_frame_loader(train_cache, args.condition, norm_stats,
-                                        batch_size=args.batch_size * 32)
+                                        batch_size=args.batch_size * 32, num_workers=args.num_workers)
         val_loader = get_frame_loader(val_cache, args.condition, norm_stats,
-                                      batch_size=args.batch_size * 32, shuffle=False)
+                                      batch_size=args.batch_size * 32, shuffle=False, num_workers=args.num_workers)
 
     # --- Model ---
     model = build_model(args.model, input_dim, C.OUTPUT_DIM).to(device)

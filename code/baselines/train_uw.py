@@ -154,6 +154,9 @@ def main():
     parser.add_argument("--log_out_dir", type=str, required=True, help="Output dir for the training log")
     parser.add_argument("--seed", type=int, default=0,
                         help="RNG seed (default 0 = original hard-coded value)")
+    parser.add_argument("--num_workers", type=int, default=16,
+                        help="DataLoader workers per loader (paper runs: 16). Another value can change the random "
+                             "crops of seeded runs")
     args = parser.parse_args()
 
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
@@ -181,12 +184,14 @@ def main():
     val_cache = val_cache_path
     train_loader = get_seq_loader_uw(train_cache, args.condition, norm_stats,
                                        batch_size=args.batch_size,
-                                       shuffle=True, training=True, seed=args.seed)
+                                       shuffle=True, training=True, seed=args.seed,
+                                       num_workers=args.num_workers)
     # Deterministic validation: no shuffle so init val is reproducible
     # across runs that share the same checkpoint and dataset.
     val_loader   = get_seq_loader_uw(val_cache, args.condition, norm_stats,
                                        batch_size=args.batch_size,
-                                       shuffle=False, training=False)
+                                       shuffle=False, training=False,
+                                       num_workers=args.num_workers)
 
     # ---- Model + warm start ----
     init_ckpt = args.init_ckpt

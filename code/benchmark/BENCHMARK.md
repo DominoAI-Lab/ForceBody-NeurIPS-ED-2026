@@ -6,9 +6,11 @@ dataset 1.2.0). The folder `code/benchmark/` of the GitHub repository holds the 
 builder (`benchmark/build_bench_cache_v12.py`) and a reference scorer (`benchmark/score_v12.py`). The data are on
 Hugging Face (https://huggingface.co/datasets/kwonjoon/ForceBody). Baselines retrained on dataset 1.2.1 are listed under
 "Results".
-Dataset 1.3.0 has the same benchmark inputs, labels, masks and splits as 1.2.1; only the 40 Hamner2013 trial keys
-changed (`Hammer2013_*` -> `Hamner2013_*`, `uid_map_v12_to_v13.csv`), so prediction files keyed by 1.2.x `trial_uid`
-must have these 40 keys renamed. The ForceBody paper reports three-seed means on all test strata, see "Paper numbers".
+Dataset 1.3.0 has the same benchmark inputs, labels, masks and splits as 1.2.1. Only the study name changed from
+Hammer2013 to Hamner2013. This renames the 40 trial keys (`Hammer2013_*` -> `Hamner2013_*`, `uid_map_v12_to_v13.csv`)
+and the `study` and `person_id` strings of these trials. Prediction files keyed by 1.2.x `trial_uid` must have these 40
+keys renamed, and the `per_study` results of a 1.3.0 cache use the key `Hamner2013` instead of `Hammer2013`. The
+ForceBody paper reports three-seed means on all test strata, see "Paper numbers".
 
 ## Tasks
 
@@ -19,14 +21,14 @@ must have these 40 keys renamed. The ForceBody paper reports three-seed means on
 | label | `tau_selfconsistent / mass_kg_dynamics` (N m/kg) | `grf_aligned[:, 0:2] / (mass_kg_dynamics * 9.81)` (body weights) |
 | label frame | `addb_lab`, OpenSim Rajagopal DOFs (`dof_names_opensim`) | `skel_world`, y up, gravity -y; contact 0 = right foot, 1 = left foot |
 | scored channels | the 20 direct DOFs (`direct_dof_mask`): hip x3, knee, ankle, MTP per side; elbow, radioulnar, wrist x2 per side | 6 channels: right and left foot, x / y / z |
-| frames scored | `eval_tau_frame_ok` and `eval_torque_trial_ok` | `eval_grf_frame_ok` and `eval_grf_trial_ok` (stance frames only on running, see below) |
+| frames scored | `eval_tau_frame_ok` and `eval_torque_trial_ok` | `eval_grf_frame_ok` and `eval_grf_trial_ok` (on Carter2023 running this includes the zero-force flight frames, see below) |
 | channel groups | `all` (20, headline), `all_no_wrist` (16), `lower` (12), `upper` (8), `upper_no_wrist` (4) | `all` (6, headline), `vertical` (2), `horizontal` (4), `sum_feet` (two-foot total, 3) |
 | prediction file | `.npz`, one key per `trial_uid`, [T,37] N m/kg in `dof_names` order | `.npz`, one key per `trial_uid`, [T,2,3] BW |
 
 - `trans_vel` is `numpy.gradient(trans, 1 / fps_true_grid)` inside the trial (m/s). Models may derive further features
   (for example pose velocities) from the inputs of the same trial.
-- Mass (decision D21). Inputs use the recorded `mass_kg`. Labels are divided by `mass_kg_dynamics` (the AddB pass-2
-  skeleton mass with the approved rescale already applied). Never multiply by `mass_dyn_scale` again.
+- Mass (decision D21 in `spec_v12.json`). Inputs use the recorded `mass_kg`. Labels are divided by `mass_kg_dynamics`
+  (the AddB pass-2 skeleton mass with the approved rescale already applied). Never multiply by `mass_dyn_scale` again.
 - Gravity constant 9.81 m/s^2 is the constant of the v1.1/v1.2 force and QC code.
 - Ground reaction moment (GRM). In ForceBody the GRM of a contact is `contact_torque` (`addb_lab`) /
   `contact_torque_aligned` (`skel_world`), the free moment in N m acting at the centre of pressure (`cop` /
@@ -41,8 +43,12 @@ must have these 40 keys renamed. The ForceBody paper reports three-seed means on
   segments, and trials whose dynamics mass disagrees with the GRF (`qc_mass_dyn_vs_grf_flag`); `eval_torque_trial_ok`
   also requires a root residual of at most 0.1 BW. The overlapping Tiziana2019 capture pairs share no GRF-valid frame
   and are kept for force evaluation (`qc_overlap_motion_drop` applies to motion evaluation only).
-- `grf_valid_mask` covers the frames with a measured force. On Carter2023 running it excludes the flight frames, so
-  T-GRF on running is scored on stance frames only.
+- `grf_valid_mask` covers the frames with a measured force, and a zero force in the flight phase counts as measured.
+  On Carter2023 running it covers the flight frames in almost all trials, so T-GRF on running scores stance and flight
+  frames. In the test split, all 258 Carter2023 running trials with `eval_grf_trial_ok` have scored flight frames, and
+  these are 44% of their 182,534 scored frames (flight = total vertical GRF of both feet below 5% of body weight). In
+  21 of the 5,507 Carter2023 running trials, AddB marks every flight frame as missing GRF, so only stance frames are
+  scored there.
 
 ## Pose source and leakage
 
@@ -60,15 +66,18 @@ are also refused by name (`forcebody_io.LEAKY_INPUT_FIELDS`): the dynamics-pass 
 `joints_dyn`, `addb_joints_dyn`, `q_gt`, `qd_gt`, `qdd_gt`), the labels (`tau_*`, `mu_tau`, `sigma_tau`, `percentiles`,
 `grf*`, `cop*`, `contact_*`, `grf_valid_mask`) and fields derived from the GRF (`mass_kg_grf`, `mass_dyn_scale`,
 `mass_kg_dynamics*`, `cadence_spm_grf`, `stride_time_s_med`, `duty_factor_*`, `support_side*`, `caption_support_side`,
-`floor_height_m`, `speed_belt_grf_mps`, `mc_*`, `eval_*`, `t2m_*`, `s8b_*`, `qc_*`, the usability flags, `kin_frame_ok`,
-`gait_events.csv`).
+`floor_height_m`, `speed_belt_grf_mps`, `mass_dyn_used_kg`, `mass_kg_grf_*`, `chair_contact`, `floor_tilt_*`,
+`addb_belt_speed_mps`, `speed_mps`, `tilt_deg`, `mc_*`, `eval_*`, `t2m_*`, `s8b_*`, `qc_*`, the usability flags
+including `q_gt_usable` and `usable_provisional`, `kin_frame_ok`, `gait_events.csv`). This denylist is a safety net and
+may not be complete. Only the allowlist defines the valid inputs.
 
 ## Splits
 
-Person-level splits (decision D26): `test` = `split_addb == "test"`, `val` = `split_addb_val == "val"` (persons drawn
-from the `split_addb` train persons, about 10% per study; pathological persons and the heavy runner Carter2023_S20 are
-not drawn), `train` = the remaining `split_addb` train persons. The manifest column `split_addb_val` holds the three
-values. Select checkpoints and hyperparameters on `val` only and score `test` once.
+Person-level splits (decision D26 in `spec_v12.json`): `test` = `split_addb == "test"`,
+`val` = `split_addb_val == "val"` (persons drawn from the `split_addb` train persons, about 10% per study; pathological
+persons and the heavy runner Carter2023_S20 are not drawn), `train` = the remaining `split_addb` train persons. The
+manifest column `split_addb_val` holds the three values. Select checkpoints and hyperparameters on `val` only and score
+`test` once.
 
 Counts from the meta json files of `build_bench_cache_v12.py` (pose source pass0, dataset 1.2.1; identical for 1.3.0).
 Scored frames and trials include the pathological stratum; "trials with labels" are the trials with the trial flag
@@ -89,7 +98,8 @@ Scored frames and trials include the pathological stratum; "trials with labels" 
 - Group value = mean over the channels of the group (as in paper Table 4).
 - Aggregations. `pooled` (headline): all scored frames of the healthy stratum. `study_macro`: per-study pooled value,
   then the unweighted mean over studies. `per_study` and `per_activity` (`activity_recovered`) pooled within each group.
-  `pathological` (Fregly2012 TKA, Li2021 stroke; decision D18): reported separately, never part of the headline.
+  `pathological` (Fregly2012 TKA, Li2021 stroke; decision D18 in `spec_v12.json`): reported separately, never part of
+  the headline.
   `all_strata`: both strata pooled, for reference.
 - Uncertainty. 95% percentile intervals from 1000 person-level bootstrap resamples (seed 0) for `pooled` and
   `study_macro` (persons resampled within each study). The number of resamples and the seed are our choice; no
@@ -107,6 +117,9 @@ python benchmark/score_v12.py --task tau --cache bench_cache/bench_test_pass0.np
 python benchmark/score_v12.py --task grf --cache bench_cache/bench_test_pass0.npz --pred my_grf_pred.npz --out grf_result.json
 ```
 
+To reuse these caches for `code/baselines/`, add `--extra_inputs joints` to the build command. `prep_caches.py` adds it
+itself when it builds the caches.
+
 ```python
 import sys
 sys.path.insert(0, "benchmark")            # run from code/
@@ -117,7 +130,9 @@ y, m = c["tau_nmkg"], c["tau_mask"]        # labels [N, 37] and the scored-frame
 for i, uid, sl in B.iter_trials(c): ...    # per-trial frame slices
 ```
 
-`score_v12.table_row(result, name)` formats one row of the tables below and refuses leaky or non-test results.
+`score_v12.table_row(result, name)` formats one single-run markdown row (pooled RMSE, MAE and PCC with the 95% person
+bootstrap intervals of RMSE and PCC, then study-macro RMSE and PCC). It refuses leaky or non-test results. The seed
+tables below are the mean ± standard deviation over the per-seed result jsons (`code/baselines/aggregate.py`).
 
 ## Results
 

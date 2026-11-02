@@ -12,13 +12,30 @@ It does not need the SKEL body model or any fitting code.
 
 ## Install
 
+Use Python 3.9 to 3.12 (`numpy<2` has no wheels for Python 3.13).
+
 ```bash
-pip install -r requirements.txt          # torch >= 2.4, numpy
-# Mamba2 only (CUDA GPU):
-pip install causal_conv1d==1.6.1 mamba_ssm==2.3.1 --no-build-isolation
+pip install -r requirements.txt          # torch 2.8.0 (tested version), numpy 1.26
 ```
 
-Tested with Python 3.9, torch 2.8.0 (CUDA 12.8), numpy 1.26.4, mamba_ssm 2.3.1, causal_conv1d 1.6.1.
+Mamba2 only (CUDA GPU, Linux x86_64, Python 3.10 to 3.12). Install the prebuilt wheels of the two kernel packages
+for torch 2.8 and CUDA 12:
+
+```bash
+TAG=$(python -c "import sys; print('cp%d%d' % sys.version_info[:2])")
+pip install --no-cache-dir \
+  "https://github.com/Dao-AILab/causal-conv1d/releases/download/v1.6.1.post4/causal_conv1d-1.6.1+cu12torch2.8cxx11abiTRUE-$TAG-$TAG-linux_x86_64.whl" \
+  "https://github.com/state-spaces/mamba/releases/download/v2.3.1/mamba_ssm-2.3.1+cu12torch2.8cxx11abiTRUE-$TAG-$TAG-linux_x86_64.whl"
+```
+
+Do not use `pip install causal_conv1d==1.6.1` for this. Its setup script looks for a wheel under the v1.6.1 release
+tag, which has none for torch 2.8, and then compiles from source. `--no-cache-dir` keeps pip from reusing a wheel that
+it cached for another torch version. Such a wheel fails at import with `undefined symbol`. Python 3.9 has no prebuilt
+wheels. There, `pip install causal_conv1d==1.6.1 mamba_ssm==2.3.1 --no-build-isolation` compiles both packages and
+needs a CUDA 12.x `nvcc` that matches torch 2.8.0+cu128.
+
+The paper runs used Python 3.9.23, torch 2.8.0+cu128, numpy 1.26.4, mamba_ssm 2.3.1 and causal_conv1d 1.6.1 (both
+compiled from source). The commands above were also checked in a new Python 3.12 venv.
 
 ## Main steps
 
@@ -45,6 +62,11 @@ This first builds the official benchmark caches `bench_{train,val,test}_pass0.np
 statistics `tau/norm_stats_{A,B,C}.pt` (train split, scored frames only), the GRF caches `grf/*_grf.npz` and
 `grf/norm_stats_grf.npz`. Splits: train / val (`split_addb_val`) / test (`split_addb`).
 
+`prep_caches.py` needs about 55 GB of RAM and about 20 GB of disk for `CACHE`. The train split is the peak (52 GB
+resident in our run with `--workers 3`). The benchmark caches alone (`../benchmark/build_bench_cache_v12.py`) peak at
+about 8 GB of RAM. To reuse benchmark caches that you built yourself, build them with `--extra_inputs joints` and pass
+their folder as `--bench_dir`.
+
 ### 2. Train
 
 Torque (one model per call, `--model mlp | fconv | lstm | gru | mamba2 | transformer`):
@@ -56,7 +78,8 @@ python train.py --model transformer --condition C --device cuda:0 --patience 80 
 
 The checkpoint with the lowest validation loss is kept (`<model>_C_best.pt`). Early stopping uses `--patience 80`
 epochs. `--eval_chunk N` splits the validation forward into sub-batches of N trials (same result, less GPU memory).
-`--cpu_budget S` saves a resume state and exits with code 3 after S CPU seconds; restart with `--resume`.
+`--cpu_budget S` saves a resume state and exits with code 3 after S CPU seconds. Restart with `--resume`.
+`--num_workers N` sets the DataLoader workers per loader (default 16, the paper value). `train_uw.py` has the same flag.
 
 GRF (`--arch mlp_deep | gln`):
 
@@ -107,14 +130,18 @@ See `../benchmark/BENCHMARK.md` for the metrics and strata.
 | Tool | Purpose |
 |---|---|
 | `aggregate.py` | Scores every prediction file of one or more run folders, writes per-run values, mean +- std over runs (seeds), UW gain per run and `submitted_vs_release.csv` (the numbers of the submitted paper on release 1.0 next to the release runs). |
-| `scripts/run_job.sh` | One job with the paper arguments: `JOB=tau|uw|grf|ablation`, `MODEL`, `CACHE`, `RUNS`, optional `SEED`, `COND`, `GPU`, `PY`. |
+| `scripts/run_job.sh` | One job with the paper arguments: `JOB=tau|uw|grf|ablation`, `MODEL`, `CACHE`, `RUNS`, optional `SEED`, `COND`, `GPU`, `PY`, `EVAL_CHUNK`. |
 | `scripts/run_job.sbatch` | Slurm wrapper of `run_job.sh` (add your partition / account). |
 | `../visualize.py` | Renders one trial (see `../VISUALIZATION.md`). Needs PyTorch, pyrender and the SKEL package and model. The baselines do not. |
 
-Seeds (the benchmark runs used three seeds, 1 to 3):
+Seeds (the benchmark runs used three seeds). Seed 1 is the original run without `SEED`. The torque models are then
+unseeded, UW uses seed 0 and GRF uses seed 20260427 (the script defaults). Seeds 2 and 3 pass `--seed 2` and `--seed 3`.
 
 ```bash
-for S in 1 2 3; do
+for M in mlp fconv lstm gru mamba2 transformer; do JOB=tau MODEL=$M CACHE=$CACHE RUNS=runs/seed1 bash scripts/run_job.sh; done
+JOB=uw  MODEL=transformer CACHE=$CACHE RUNS=runs/seed1 bash scripts/run_job.sh
+for M in mlp_deep gln; do JOB=grf MODEL=$M CACHE=$CACHE RUNS=runs/seed1 bash scripts/run_job.sh; done
+for S in 2 3; do
   for M in mlp fconv lstm gru mamba2 transformer; do JOB=tau MODEL=$M CACHE=$CACHE RUNS=runs/seed$S SEED=$S bash scripts/run_job.sh; done
   JOB=uw  MODEL=transformer CACHE=$CACHE RUNS=runs/seed$S SEED=$S bash scripts/run_job.sh
   for M in mlp_deep gln; do JOB=grf MODEL=$M CACHE=$CACHE RUNS=runs/seed$S SEED=$S bash scripts/run_job.sh; done
@@ -122,10 +149,11 @@ done
 python aggregate.py --cache_dir $CACHE --runs seed1=runs/seed1 seed2=runs/seed2 seed3=runs/seed3 --out_dir results
 ```
 
-The paper seed-1 runs were unseeded for the torque models (omit `SEED`), seed 0 for UW and seed 20260427 for GRF
-(the script defaults). Seed-1 results therefore cannot be reproduced bit for bit.
+The seed-1 torque runs are unseeded, so they cannot be reproduced bit for bit. On a GPU with 32 GB or less, add
+`EVAL_CHUNK=16` to the Transformer jobs.
 
-Input ablation (Transformer; A = poses, B = A + betas + mass + height, C = B + velocities, the main setting):
+Input ablation (Transformer; A = poses, B = A + betas + mass + height, C = B + velocities, the main setting). The paper
+ablation runs used `--seed 1`, `--seed 2` and `--seed 3`:
 
 ```bash
 for C in A B; do for S in 1 2 3; do
@@ -152,11 +180,21 @@ python aggregate.py --cache_dir $CACHE --runs seed1=runs_ablation/condA/seed1 se
 - The validation loss is a mean of batch means. The MLP validation loader drops the last incomplete batch.
 - The random crop uses `randint(0, T - 256)`, so the last frame of a trial longer than 256 frames is never in a crop.
 - `train.py` without `--seed` is unseeded. Mamba2 and cuDNN kernels are not deterministic.
+- Seeded runs repeat bit for bit only on the same GPU type and torch build. On another GPU type, the epoch-1 losses of
+  our seeded reruns differed from the paper logs after about four decimal places.
+- The DataLoader uses 16 workers per loader (`--num_workers`, paper value). Another value can change the random crops
+  of seeded runs.
+- The LR decay of `config.py` (x 0.05 at step 200k) is never reached. Every torque run of the paper stopped early before
+  step 130k, so all of them trained at lr 2e-4 after the warm-up.
 - 12 input features have a train standard deviation of 0 (normalization divides by 1e-8). They are constant in all splits.
 - GRF: training and validation use only window centres with a full 51-frame window (shorter trials are skipped). Test
   prediction covers every frame with edge-replicated windows.
 - Mamba2 kernels (mamba_ssm 2.3.1 + triton) work only on the process's `cuda:0`. Select the GPU with
   `CUDA_VISIBLE_DEVICES` (and `CUDA_DEVICE_ORDER=PCI_BUS_ID`) and pass `--device cuda:0`. The model runs a GPU test at
   import (`MAMBA_SKIP_SMOKETEST=1` skips it).
-- The Transformer validation forward on full trials needs about 30 GB of GPU memory at batch 128; use `--eval_chunk`
-  on smaller GPUs.
+- The Transformer validation forward on full trials needs more than 32 GB of GPU memory at batch 128. The paper
+  seed-1 Transformer job ran out of memory on a 32 GB V100 and was rerun on a 40 GB A100. On GPUs with 32 GB or less,
+  use `--eval_chunk 16` (or `EVAL_CHUNK=16` with `scripts/run_job.sh`).
+- Hardware of the 1.2.1 runs (one GPU per job). The cluster jobs ran on Tesla V100 or V100S GPUs with 32 GB, and the
+  seed-1 Transformer on an A100 with 40 GB. The UW fine-tunes and the seed-2 and seed-3 Transformer runs ran on a local
+  GPU.
