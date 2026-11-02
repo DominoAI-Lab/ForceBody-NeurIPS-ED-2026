@@ -23,7 +23,7 @@ Each torque label comes with a per-frame, per-joint uncertainty (σ<sub>τ</sub>
 The motions come from ten public motion-capture studies in [AddBiomechanics](https://addbiomechanics.org/).
 Every trial is one NumPy `.npz` file, so you can read the data with NumPy alone.
 
-> **Data source note.** ForceBody does not contain newly recorded motion capture. It refits existing AddBiomechanics data to SKEL and adds cleaned forces, recomputed torques and torque uncertainty.
+ForceBody contains no newly recorded motion capture. It refits existing AddBiomechanics data to SKEL and adds cleaned forces, recomputed torques and torque uncertainty.
 
 ## Key numbers
 
@@ -35,7 +35,7 @@ Every trial is one NumPy `.npz` file, so you can read the data with NumPy alone.
 - Height 1.73 ± 0.09 m, mass 68.8 ± 11.5 kg.
 - About 98% of trials are on a grid near 100 Hz. The others keep their native rate (61, 201 or 250 Hz).
 - σ<sub>τ</sub> is released for 10,382 of 10,386 trials (`has_uncertainty`). The other 4 trials are shorter than one 6 Hz period.
-- The σ<sub>τ</sub> statistics in the paper use the 8,732 of these trials that also have valid GRF on at least half of their frames (`grf_valid_frac` >= 0.5). The paper calls them the trials with released σ<sub>τ</sub>. The column `n_with_uncertainty` of `subjects.csv` holds the older v1.1 count (8,652 trials in total), so use `has_uncertainty` in `manifest.csv` instead.
+- The σ<sub>τ</sub> statistics in the paper use the 8,732 of these trials that also have valid GRF on at least half of their frames (`grf_valid_frac` >= 0.5). The paper calls them the trials with released σ<sub>τ</sub>. The column `n_with_uncertainty` of `subjects.csv` still holds the older v1.1 count (8,652 trials in total). Use `has_uncertainty` in `manifest.csv` instead.
 
 ## Demo gallery
 
@@ -84,7 +84,7 @@ One file per trial, `trials/<study>/S<NN>/<trial_uid>.npz`. The main fields are 
 
 Trial-level metadata (study, activity, protocol, person, captions and quality flags) is in each file and in `manifest.csv`.
 
-**Read before training.** Masked values are not NaN, so always apply the frame masks. Normalize GRF, torque and σ<sub>τ</sub> by `mass_kg_dynamics` only. A model that predicts forces or torques must take its motion input from the kinematics-pass pose set (`pose_source="pass0"`). The dynamics-pass poses were adjusted by AddBiomechanics to agree with the measured forces, so they leak force information. [DETAILS.md](https://huggingface.co/datasets/kwonjoon/ForceBody/blob/main/DETAILS.md) on Hugging Face explains the leakage policy, the quality masks and the known issues in detail.
+Masked values are not NaN, so always apply the frame masks before training. Normalize GRF, torque and σ<sub>τ</sub> by `mass_kg_dynamics` only. A model that predicts forces or torques must take its motion input from the kinematics-pass pose set (`pose_source="pass0"`). The dynamics-pass poses were adjusted by AddBiomechanics to agree with the measured forces, so they leak force information. [DETAILS.md](https://huggingface.co/datasets/kwonjoon/ForceBody/blob/main/DETAILS.md) on Hugging Face explains the leakage policy, the quality masks and the known issues.
 
 ## Quickstart
 
@@ -159,9 +159,9 @@ Rendering needs PyTorch, pyrender and the SKEL package and model. See `code/VISU
 
 ## Benchmark
 
-Two tasks predict forces from SKEL motion. T-τ predicts joint torques and T-GRF predicts per-foot ground reaction forces. Results below are the camera-ready numbers.
+Two tasks predict forces from SKEL motion. T-τ predicts joint torques and T-GRF predicts per-foot ground reaction forces. The numbers below are from the camera-ready paper.
 
-**Protocol.** Dataset release 1.2.1. The benchmark data are identical in 1.3.0, except that the study Hammer2013 is renamed to Hamner2013 (40 trial keys and the `study` and `person_id` strings). Person-level split with 8,374 train, 1,098 val and 914 test trials. Inputs come from the kinematics-pass fit only. Checkpoints are selected on val and the test split is scored once. Mean ± standard deviation over three seeds. 20 scored DOFs on 14 joints. R = RMSE (N m/kg), M = MAE (N m/kg), P = Pearson correlation.
+We use dataset release 1.2.1. The benchmark data are identical in 1.3.0, except that the study Hammer2013 is renamed to Hamner2013 (40 trial keys and the `study` and `person_id` strings). Person-level split with 8,374 train, 1,098 val and 914 test trials. Inputs come from the kinematics-pass fit only. Checkpoints are selected on val and the test split is scored once. Mean ± standard deviation over three seeds. 20 scored DOFs on 14 joints. R = RMSE (N m/kg), M = MAE (N m/kg), P = Pearson correlation.
 
 ### Joint torque prediction (paper Table 4)
 
@@ -194,7 +194,7 @@ The same Transformer is fine-tuned with one loss weight per training window comp
 | ForceBody | SKEL | MLP | 1.165 ± 0.011 | 0.168 ± 0.009 |
 | ForceBody | SKEL | GLN | 1.136 ± 0.040 | 0.149 ± 0.011 |
 
-The AddBiomechanics rows are copied from paper Table 3 and use the Rajagopal body model. Both datasets use the same two architectures. These rows are taken from the reviewed build of the dataset, so they serve as a reference rather than a matched comparison. GRM values for ForceBody are not part of the official benchmark scorer.
+The AddBiomechanics rows are copied from paper Table 3 and use the Rajagopal body model. Both datasets use the same two architectures. They come from the reviewed build of the dataset. Read them as a reference, not as a matched comparison. GRM values for ForceBody are not part of the official benchmark scorer.
 
 The benchmark card (`code/benchmark/BENCHMARK.md`), the machine-readable spec (`code/benchmark/spec_v12.json`), the cache builder and the reference scorer are in `code/benchmark/` of this repository. BENCHMARK.md lists the same three-seed runs for every model, with the paper aggregation (all test strata) next to the benchmark headline (healthy test stratum), and the pathological stratum separately.
 
@@ -241,8 +241,8 @@ Report errors and questions on the [GitHub issues page](https://github.com/Domin
 
 ## License
 
-- **Code** in this repository is released under the [MIT license](LICENSE).
-- **Data** are released under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/). Commercial use is not permitted.
+- Code in this repository is released under the [MIT license](LICENSE).
+- Data are released under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/). Commercial use is not permitted.
 - Fields derived from AddBiomechanics (forces, AddB kinematics, torques, uncertainty, metadata) build on the AddBiomechanics dataset (CC BY 4.0). Cite AddBiomechanics and every source study you use.
 - SKEL-derived data are also subject to the [SKEL model license](https://skel.is.tue.mpg.de/), which allows non-commercial scientific research only. These are the trial fields `poses*`, `trans*`, `betas`, `skel_gender` and `joints*`, the `persons.csv` columns `beta_0` to `beta_9` and `shapy_*`, and `marker_vertex_map.json`. Building meshes from these fields requires the SKEL model, which you obtain from its authors.
 - The data include health information (stroke, total knee arthroplasty). Do not attempt to re-identify persons. ForceBody is not intended for clinical decisions.

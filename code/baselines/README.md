@@ -60,7 +60,7 @@ python prep_caches.py --release $RELEASE --out_dir $CACHE --workers 16
 This first builds the official benchmark caches `bench_{train,val,test}_pass0.npz` (pose source pass0, extra input
 `joints`) if they are missing. It then writes the torque caches `tau/{train,val,test}_cache.pt`, the normalization
 statistics `tau/norm_stats_{A,B,C}.pt` (train split, scored frames only), the GRF caches `grf/*_grf.npz` and
-`grf/norm_stats_grf.npz`. Splits: train / val (`split_addb_val`) / test (`split_addb`).
+`grf/norm_stats_grf.npz`. The splits are train / val (`split_addb_val`) / test (`split_addb`).
 
 `prep_caches.py` needs about 55 GB of RAM and about 20 GB of disk for `CACHE`. The train split is the peak (52 GB
 resident in our run with `--workers 3`). The benchmark caches alone (`../benchmark/build_bench_cache_v12.py`) peak at
@@ -134,7 +134,7 @@ See `../benchmark/BENCHMARK.md` for the metrics and strata.
 | `scripts/run_job.sbatch` | Slurm wrapper of `run_job.sh` (add your partition / account). |
 | `../visualize.py` | Renders one trial (see `../VISUALIZATION.md`). Needs PyTorch, pyrender and the SKEL package and model. The baselines do not. |
 
-Seeds (the benchmark runs used three seeds). Seed 1 is the original run without `SEED`. The torque models are then
+The benchmark runs used three seeds. Seed 1 is the original run without `SEED`. The torque models are then
 unseeded, UW uses seed 0 and GRF uses seed 20260427 (the script defaults). Seeds 2 and 3 pass `--seed 2` and `--seed 3`.
 
 ```bash
@@ -165,7 +165,7 @@ python aggregate.py --cache_dir $CACHE --runs seed1=runs_ablation/condA/seed1 se
 
 ## Known quirks (kept for parity with the paper numbers)
 
-- MLP batch: the MLP is trained per frame with `--batch_size 128` x 32 = 4,096 frames per step. The sequence models use
+- MLP batch. The MLP is trained per frame with `--batch_size 128` x 32 = 4,096 frames per step. The sequence models use
   128 windows of 256 frames.
 - Pose velocity and acceleration use dt = 1 frame (not divided by the frame rate). Trials run at 61 to 250 Hz, so the
   same motion gives different `pose_vel` values at different rates. `trans_vel` is in m/s. The 256-frame crop is

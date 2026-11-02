@@ -18,7 +18,7 @@ The body uses `skel_gender` and `betas`. The GRF arrow starts at the centre of p
 measured CoP in the SKEL frame) and uses `grf_aligned`. The skeleton is coloured by `tau_selfconsistent`, the torque
 reproducible from the shipped fields (the AddB native torque `tau_gt_det` is not, see SCHEMA_v1.3.csv). The pelvis is
 grey (its entry is the root residual). Foot arrows are green where `grf_foot_ok` and `cop_frame_ok` hold. The Falisse2017
-chair channel (`contact_bodies` == 'pelvis') is blue where `grf_frame_ok` holds (CHAIR_RGB, display choice). Arrows on
+chair channel (`contact_bodies` == 'pelvis') is blue where `grf_frame_ok` holds (CHAIR_RGB). Arrows on
 masked frames are grey. The png frame is chosen among the `grf_frame_ok` frames when the trial has any.
 
 Camera: fixed in the SKEL world frame (y up). 'view 0 deg' looks along -z, 'view 60 deg' is turned 60 deg about the
@@ -55,7 +55,7 @@ import imageio  # noqa: E402
 from PIL import Image, ImageDraw, ImageFont  # noqa: E402
 
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
-CHAIR_RGB = (0.20, 0.45, 0.95)   # chair-channel arrow colour (display choice)
+CHAIR_RGB = (0.20, 0.45, 0.95)   # chair-channel arrow colour
 PNG_VIEWS = ('view 0 deg', 'view 60 deg')
 MP4_VIEW = 'view 60 deg'
 

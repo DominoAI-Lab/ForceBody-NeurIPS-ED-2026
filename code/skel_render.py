@@ -49,7 +49,7 @@ ADDB_TO_SKEL_JOINT_MAP = {
     'acromial_l': [19, 20], 'elbow_l': [21], 'radioulnar_l': [22], 'radius_hand_l': [23],
 }
 
-# A joint with zero torque takes the torque of its parent (display choice)
+# A joint with zero torque takes the torque of its parent (display only)
 ADDB_PARENT_FALLBACK = {
     'mtp_r': 'subtalar_r', 'mtp_l': 'subtalar_l',
     'radioulnar_r': 'elbow_r', 'radioulnar_l': 'elbow_l',
@@ -58,7 +58,7 @@ ADDB_PARENT_FALLBACK = {
     'ankle_r': 'walker_knee_r', 'ankle_l': 'walker_knee_l',
 }
 
-# Foot joints are drawn with a doubled torque magnitude (display choice)
+# Foot joints are drawn with a doubled torque magnitude (display only)
 ANKLE_BOOST_JOINTS = {'ankle_r', 'ankle_l', 'subtalar_r', 'subtalar_l', 'mtp_r', 'mtp_l'}
 ANKLE_BOOST_FACTOR = 2.0
 
@@ -75,7 +75,7 @@ _GRAY = np.array([0.85, 0.85, 0.85])
 # view name -> rotation of the display frame about the vertical axis in degrees (module docstring, "Camera")
 VIEWS = {'view 0 deg': 0.0, 'view 60 deg': 60.0}
 
-# GRF arrows: length per newton, smallest force drawn, colours (display choices)
+# GRF arrows: length per newton, smallest force drawn, colours
 ARROW_SCALE = 0.0009              # m per N
 ARROW_MIN_N = 10.0
 GRF_RGB = (0.15, 0.85, 0.15)      # foot channel, masks hold
@@ -383,7 +383,7 @@ def render_panel_torque(skel_data, frame_indices, cam_t, K4, gc, size, view='vie
         meshes.append((trimesh.Trimesh(sv, skel_data['skel_f'], vertex_colors=colors, process=False), None))
         if show_skin:
             # reversed winding: back-face culling keeps the far half of the skin, a translucent layer behind the
-            # skeleton, so the torque colours are not washed out (display choice)
+            # skeleton, so the torque colours are not washed out
             skv = prep_vertices(skel_data['skin_v'][fi], gc)
             meshes.append((trimesh.Trimesh(skv, skel_data['skin_f'][:, ::-1], process=False), _skin_material()))
     return render_scene(meshes, cam_t, K4, size, view)

@@ -34,13 +34,13 @@ ForceBody paper reports three-seed means on all test strata, see "Paper numbers"
   `contact_torque_aligned` (`skel_world`), the free moment in N m acting at the centre of pressure (`cop` /
   `cop_aligned_foot`). The resultant moment of a foot about a point p is `(cop - p) x grf + contact_torque`. GRM and CoP
   are not scored in this benchmark (Carter2023 running free moments are about five times those of Hamner2013). The Falisse2017 chair channel (contact 2) is not a target.
-- The wrist DOFs are scored in `all` as in the paper; the `all_no_wrist` group is reported next to it.
-- Scored frames and trials. `eval_tau_frame_ok` = `tau_frame_ok` and `kin_frame_ok`; `eval_grf_frame_ok` =
+- The wrist DOFs are scored in `all` as in the paper. The `all_no_wrist` group is reported next to it.
+- Scored frames and trials. `eval_tau_frame_ok` = `tau_frame_ok` and `kin_frame_ok`, and `eval_grf_frame_ok` =
   `grf_frame_ok` and `kin_frame_ok` (pelvis-flip frames are not scored). The trial flags `eval_torque_trial_ok` /
   `eval_grf_trial_ok` exclude trials whose force labels are unusable (force/motion-capture desync), single-channel
   force plates (`qc_grf_single_channel`, one plate carries both feet), byte-identical duplicates (`qc_duplicate_drop`),
   the Han2023 trimmed copies of a re-exported capture (`qc_overlap_pair_drop`), static calibration, transition and pause
-  segments, and trials whose dynamics mass disagrees with the GRF (`qc_mass_dyn_vs_grf_flag`); `eval_torque_trial_ok`
+  segments, and trials whose dynamics mass disagrees with the GRF (`qc_mass_dyn_vs_grf_flag`). `eval_torque_trial_ok`
   also requires a root residual of at most 0.1 BW. The overlapping Tiziana2019 capture pairs share no GRF-valid frame
   and are kept for force evaluation (`qc_overlap_motion_drop` applies to motion evaluation only).
 - `grf_valid_mask` covers the frames with a measured force, and a zero force in the flight phase counts as measured.
@@ -55,12 +55,12 @@ ForceBody paper reports three-seed means on all test strata, see "Paper numbers"
 Every trial is read with `forcebody_io.load_trial(npz, pose_source)`. `--pose_source` defaults to `pass0` (alias `kin`),
 the SKEL fit to the AddB kinematics pass, which never saw the force plates. `pass2` (alias `dyn`) is the fit to the AddB
 dynamics pass, which AddBiomechanics adjusted to agree with the measured GRF. It can be selected, but the cache meta and
-every result json then carry `leaky_input: true` and `official_table_eligible: false`, and such results are **not**
+every result json then carry `leaky_input: true` and `official_table_eligible: false`, and such results are not
 listed in the tables below. Recovering the total GRF from the centre-of-mass acceleration alone, without learning, has a
 median error of 2.56 N/kg on pass-1 kinematics (the pass0 set, `q_kin`) and 0.20 N/kg on pass-2 kinematics (the pass2 set) (DETAILS.md on Hugging Face,
 "Leakage policy").
 
-The inputs are an allowlist: only the benchmark inputs of the table above are accepted, and any other requested input
+The inputs are an allowlist. Only the benchmark inputs of the table above are accepted, and any other requested input
 raises `ValueError` in the loader (`build_bench_cache_v12.check_inputs`). The fields known to carry force information
 are also refused by name (`forcebody_io.LEAKY_INPUT_FIELDS`): the dynamics-pass pose set (`poses_dyn`, `trans_dyn`,
 `joints_dyn`, `addb_joints_dyn`, `q_gt`, `qd_gt`, `qdd_gt`), the labels (`tau_*`, `mu_tau`, `sigma_tau`, `percentiles`,
@@ -69,7 +69,7 @@ are also refused by name (`forcebody_io.LEAKY_INPUT_FIELDS`): the dynamics-pass 
 `floor_height_m`, `speed_belt_grf_mps`, `mass_dyn_used_kg`, `mass_kg_grf_*`, `chair_contact`, `floor_tilt_*`,
 `addb_belt_speed_mps`, `speed_mps`, `tilt_deg`, `mc_*`, `eval_*`, `t2m_*`, `s8b_*`, `qc_*`, the usability flags
 including `q_gt_usable` and `usable_provisional`, `kin_frame_ok`, `gait_events.csv`). This denylist is a safety net and
-may not be complete. Only the allowlist defines the valid inputs.
+can be incomplete. Only the allowlist defines the valid inputs.
 
 ## Splits
 
@@ -79,8 +79,8 @@ persons and the heavy runner Carter2023_S20 are not drawn), `train` = the remain
 manifest column `split_addb_val` holds the three values. Select checkpoints and hyperparameters on `val` only and score
 `test` once.
 
-Counts from the meta json files of `build_bench_cache_v12.py` (pose source pass0, dataset 1.2.1; identical for 1.3.0).
-Scored frames and trials include the pathological stratum; "trials with labels" are the trials with the trial flag
+Counts from the meta json files of `build_bench_cache_v12.py` (pose source pass0, dataset 1.2.1, identical for 1.3.0).
+Scored frames and trials include the pathological stratum. "Trials with labels" are the trials with the trial flag
 (`eval_torque_trial_ok` / `eval_grf_trial_ok`).
 
 | split | persons | trials | frames | T-tau trials with labels | T-tau scored frames | T-GRF trials with labels | T-GRF scored frames |
@@ -98,11 +98,11 @@ Scored frames and trials include the pathological stratum; "trials with labels" 
 - Group value = mean over the channels of the group (as in paper Table 4).
 - Aggregations. `pooled` (headline): all scored frames of the healthy stratum. `study_macro`: per-study pooled value,
   then the unweighted mean over studies. `per_study` and `per_activity` (`activity_recovered`) pooled within each group.
-  `pathological` (Fregly2012 TKA, Li2021 stroke; decision D18 in `spec_v12.json`): reported separately, never part of
+  `pathological` (Fregly2012 TKA, Li2021 stroke, decision D18 in `spec_v12.json`): reported separately, never part of
   the headline.
   `all_strata`: both strata pooled, for reference.
 - Uncertainty. 95% percentile intervals from 1000 person-level bootstrap resamples (seed 0) for `pooled` and
-  `study_macro` (persons resampled within each study). The number of resamples and the seed are our choice; no
+  `study_macro` (persons resampled within each study). The number of resamples and the seed are our choice. No
   citation is claimed. A study with one test person has a zero-width interval.
 
 ## How to run
@@ -136,7 +136,7 @@ tables below are the mean ± standard deviation over the per-seed result jsons (
 
 ## Results
 
-Baselines: the paper model code in `code/baselines/` (Table 4 torque models, the Transformer + UW of Table 5, the Table 3
+The baselines are the paper model code in `code/baselines/` (Table 4 torque models, the Transformer + UW of Table 5, the Table 3
 GRF MLP and GLN) retrained on dataset 1.2.1 with the pass-0 caches of `build_bench_cache_v12.py` (2026-10-29). Inputs are
 benchmark inputs only. The torque models use `poses`, `trans_vel`, `betas`, `mass_kg` and `height_m`, with pose velocity
 and acceleration derived inside the trial. The GRF models use `poses`, their second difference and `joints` relative to
@@ -195,11 +195,11 @@ persons (914 trials) were scored once. Each value is the mean and standard devia
 `all_strata` aggregation. The `all_strata` columns of the T-tau table above equal the "All joints" row of paper Tables 4
 and 5, and the "Table 3 GRF" column equals the ForceBody rows of paper Table 3.
 
-- Table 3. The two AddBiomechanics rows are taken from the reviewed build of the dataset, so they serve as a reference
-  rather than a matched comparison. They took AddB **dynamics-pass (pass 2)** kinematics as input, which were fitted
+- Table 3. The two AddBiomechanics rows come from the reviewed build of the dataset. Read them as a reference,
+  not as a matched comparison. They took AddB dynamics-pass (pass 2) kinematics as input, which were fitted
   with the force plates (force-label leakage). They also differ from the ForceBody rows in model implementation,
   optimizer, training subset and validation. The GRM column of Table 3 is not a target of this benchmark.
-- The submitted version of the paper used **ForceBody 1.0.0 (reviewed build)** with the v1 torque labels, the P80 subset
+- The submitted version of the paper used ForceBody 1.0.0 (reviewed build) with the v1 torque labels, the P80 subset
   (SKEL fit error at most the 80th percentile), the validation set equal to the test set and one seed. Those numbers
   must not be mixed with results on this benchmark. The torque labels changed between versions: scoring the v1.1
   `tau_selfconsistent` against the v1 labels gives All-joint RMSE / MAE / PCC 0.287 / 0.087 / 0.721, the same order as
@@ -210,6 +210,6 @@ and 5, and the "Table 3 GRF" column equals the ForceBody rows of paper Table 3.
 
 ## Known limitations
 
-- A trial with a true trial flag can still have no scored frame (for example all frames outside `eval_tau_frame_ok`);
-  such trials are skipped and counted in `n_trials_without_scored_frames`.
+- A trial with a true trial flag can still have no scored frame (for example all frames outside `eval_tau_frame_ok`).
+  Such trials are skipped and counted in `n_trials_without_scored_frames`.
 - CoP, GRM and the uncertainty fields (`mu_tau`, `sigma_tau`) are not benchmark targets.
