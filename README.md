@@ -10,7 +10,10 @@ Joonwoo Kwon<sup>1</sup>, Yufei Zhang<sup>2</sup>, Xiaoming Liu<sup>3</sup>, Zij
 
 <img src="assets/divider.png" width="100%" height="4">
 
-[![Dataset](https://img.shields.io/badge/Dataset-Hugging%20Face-yellow.svg)](https://huggingface.co/datasets/kwonjoon/ForceBody)
+[![Dataset on Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Dataset-Hugging%20Face-FFD21E?style=for-the-badge)](https://huggingface.co/datasets/kwonjoon/ForceBody)
+
+### 🤗 Dataset: [huggingface.co/datasets/kwonjoon/ForceBody](https://huggingface.co/datasets/kwonjoon/ForceBody)
+
 [![Code License: MIT](https://img.shields.io/badge/Code-MIT-blue.svg)](LICENSE)
 [![Data License: CC BY-NC 4.0](https://img.shields.io/badge/Data-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
 
