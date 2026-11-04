@@ -60,6 +60,19 @@ Torque magnitude |τ| (left body in each pair) and torque uncertainty σ<sub>τ<
 
 Higher-quality MP4 versions of every clip are in [`assets/`](assets/).
 
+### Paper figures as videos
+
+Animated versions of the paper figures, in [`assets/paper_figures/`](assets/paper_figures/).
+
+| Figure | Video |
+|:---|:---|
+| Fig. 2(b). Fourteen subjects at true metric scale with SKEL body, skeleton and GRF | [`fig2b_body_diversity.mp4`](assets/paper_figures/fig2b_body_diversity.mp4) |
+| Fig. 5. DOF acceleration, AddB vs. SKEL fit (walking, running, jumping) | [`fig5_dof_acceleration.mp4`](assets/paper_figures/fig5_dof_acceleration.mp4) |
+| Fig. 6. Torque and torque uncertainty across six activities | [`fig6_torque_uncertainty_activities.mp4`](assets/paper_figures/fig6_torque_uncertainty_activities.mp4) |
+| Fig. 7. Per-joint torque trajectories with the τ ± σ<sub>τ</sub> band (running, sit-to-stand) | [`fig7_torque_trajectories.mp4`](assets/paper_figures/fig7_torque_trajectories.mp4) |
+
+In the Fig. 2(b) video each subject plays a short clip forward and then backward, so the loop has no jump.
+
 ## What is in each trial
 
 One file per trial, `trials/<study>/S<NN>/<trial_uid>.npz`. The main fields are below. The full list (547 fields with dtype, shape, unit and frame) is in `SCHEMA_v1.3.csv` of the dataset release.
