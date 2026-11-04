@@ -14,7 +14,13 @@ Joonwoo Kwon<sup>1</sup>, Yufei Zhang<sup>2</sup>, Xiaoming Liu<sup>3</sup>, Zij
 [![Code License: MIT](https://img.shields.io/badge/Code-MIT-blue.svg)](LICENSE)
 [![Data License: CC BY-NC 4.0](https://img.shields.io/badge/Data-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
 
-<img src="assets/teaser.png" width="100%" alt="ForceBody teaser. (a) SKEL biomechanical body model. (b) Per-joint torque magnitude and torque uncertainty on the body. (c) Force annotations over a motion. (d) Uncertainty annotations over the same motion.">
+<img src="assets/teaser.png" width="100%" alt="Fig. 1. (a) SKEL biomechanical body model. (b) Per-joint torque magnitude and torque uncertainty on the body. (c) Force annotations over a motion. (d) Uncertainty annotations over the same motion.">
+
+<sub><b>Fig. 1.</b> (a) SKEL, a biomechanical skeleton inside the SMPL surface. (b) One frame with bones colored by joint torque |τ| (left) and by its uncertainty σ<sub>τ</sub> (right). (c) Torque over a walking sequence. (d) Uncertainty over the same sequence. Green arrows are measured GRF.</sub>
+
+<img src="assets/fig2_dataset.gif" width="100%" alt="Fig. 2. (a) BMI, body mass and height by sex across 140 subjects, and activity composition. (b) Fourteen subjects rendered in one scene at true metric scale with their SKEL body, skeleton and measured GRF, labeled with sex, height and body mass.">
+
+<sub><b>Fig. 2.</b> (a) BMI, body mass and height by sex across 140 subjects, and activity composition of 10,386 trials. (b) Fourteen subjects in one scene at true metric scale, each with their own SKEL body shape, skeleton and measured GRF (green). Labels give sex, height and body mass. Still image: <a href="assets/fig2_dataset.png">fig2_dataset.png</a>.</sub>
 
 </div>
 
@@ -36,68 +42,6 @@ ForceBody contains no newly recorded motion capture. It refits existing AddBiome
 - About 98% of trials are on a grid near 100 Hz. The others keep their native rate (61, 201 or 250 Hz).
 - σ<sub>τ</sub> is released for 10,382 of 10,386 trials (`has_uncertainty`). The other 4 trials are shorter than one 6 Hz period.
 - The σ<sub>τ</sub> statistics in the paper use the 8,732 of these trials that also have valid GRF on at least half of their frames (`grf_valid_frac` >= 0.5). The paper calls them the trials with released σ<sub>τ</sub>. The column `n_with_uncertainty` of `subjects.csv` still holds the older v1.1 count (8,652 trials in total). Use `has_uncertainty` in `manifest.csv` instead.
-
-## Demo gallery
-
-Each clip shows the SKEL body with motion-capture markers and GRF arrows at the centre of pressure.
-The right panel shows the measured vertical GRF per foot and one joint moment τ with the band τ ± σ<sub>τ</sub>.
-
-| Running | Stair ascent |
-|:---:|:---:|
-| <img src="assets/running_hamner2013.gif" width="100%"> | <img src="assets/stair_ascent_falisse2017.gif" width="100%"> |
-| **Sit-to-stand** | **Drop jump** |
-| <img src="assets/sit_to_stand_uhlrich2023.gif" width="100%"> | <img src="assets/drop_jump.gif" width="100%"> |
-| **Walking** | **Squat** |
-| <img src="assets/walking_uhlrich2023.gif" width="100%"> | <img src="assets/squat_li2021.gif" width="100%"> |
-| **Single-leg hop** | **Side stretch** |
-| <img src="assets/hop_han2023.gif" width="100%"> | <img src="assets/side_stretch_han2023.gif" width="100%"> |
-
-### Torque and uncertainty across activities
-
-Torque magnitude |τ| (left body in each pair) and torque uncertainty σ<sub>τ</sub> (right body) on six activities.
-
-<img src="assets/activities_grid_tau_sigma.gif" width="100%" alt="Six activities with the skeleton colored by torque magnitude and by torque uncertainty. Running, sit-to-stand, drop jump, tai chi, ballet jumps, soccer kick.">
-
-Higher-quality MP4 versions of every clip are in [`assets/`](assets/).
-
-### Paper figures as videos
-
-Animated versions of the paper figures, in [`assets/paper_figures/`](assets/paper_figures/).
-
-| Figure | Video |
-|:---|:---|
-| Fig. 2(b). Fourteen subjects at true metric scale with SKEL body, skeleton and GRF | [`fig2b_body_diversity.mp4`](assets/paper_figures/fig2b_body_diversity.mp4) |
-| Fig. 5. DOF acceleration, AddB vs. SKEL fit (walking, running, jumping) | [`fig5_dof_acceleration.mp4`](assets/paper_figures/fig5_dof_acceleration.mp4) |
-| Fig. 6. Torque and torque uncertainty across six activities | [`fig6_torque_uncertainty_activities.mp4`](assets/paper_figures/fig6_torque_uncertainty_activities.mp4) |
-| Fig. 7. Per-joint torque trajectories with the τ ± σ<sub>τ</sub> band (running, sit-to-stand) | [`fig7_torque_trajectories.mp4`](assets/paper_figures/fig7_torque_trajectories.mp4) |
-
-In the Fig. 2(b) video each subject plays a short clip forward and then backward, so the loop has no jump.
-
-## What is in each trial
-
-One file per trial, `trials/<study>/S<NN>/<trial_uid>.npz`. The main fields are below. The full list (547 fields with dtype, shape, unit and frame) is in `SCHEMA_v1.3.csv` of the dataset release.
-
-| Field | Shape | Unit | Frame | Content |
-|---|---|---|---|---|
-| `poses` | `[T,46]` | rad | skel_world | SKEL pose fitted to the AddB kinematics pass (never saw the force plates) |
-| `trans` | `[T,3]` | m | skel_world | SKEL root translation of `poses` |
-| `joints` | `[T,24,3]` | m | skel_world | SKEL joint centres of `poses` |
-| `betas` | `[10]` | | | SKEL shape, one per person |
-| `skel_gender` | `scalar` | | | SKEL model used for the fit |
-| `poses_dyn`, `trans_dyn`, `joints_dyn` | `as above` | | skel_world | Second SKEL fit, to the AddB dynamics pass (force-aware) |
-| `q_kin`, `q_gt` | `[T,37]` | rad, m | addb_lab | AddB kinematics-pass and dynamics-pass joint angles (OpenSim Rajagopal DOFs) |
-| `grf_aligned` | `[T,C,3]` | N | skel_world | Measured ground reaction force per contact (0 = right foot, 1 = left foot, Falisse2017 also 2 = pelvis on an instrumented chair) |
-| `cop_aligned_foot` | `[T,C,3]` | m | skel_world | Centre of pressure per contact |
-| `contact_torque_aligned` | `[T,C,3]` | N m | skel_world | Free moment at the centre of pressure |
-| `tau_selfconsistent` | `[T,37]` | N m, N | addb_lab | Inverse-dynamics joint torque label |
-| `mu_tau`, `sigma_tau` | `[T,37]` | N m, N | addb_lab | Monte Carlo mean and standard deviation of the torque |
-| `grf_frame_ok`, `tau_frame_ok`, `mc_frame_ok` | `[T]` | | | Frame masks for GRF, torque and σ<sub>τ</sub> use |
-| `mass_kg`, `mass_kg_dynamics` | `scalar` | kg | | Recorded mass (model input) and dynamics mass (label normalization) |
-| `fps`, `fps_true_grid` | `scalar` | Hz | | Nominal and true frame rate |
-
-Trial-level metadata (study, activity, protocol, person, captions and quality flags) is in each file and in `manifest.csv`.
-
-Masked values are not NaN, so always apply the frame masks before training. Normalize GRF, torque and σ<sub>τ</sub> by `mass_kg_dynamics` only. A model that predicts forces or torques must take its motion input from the kinematics-pass pose set (`pose_source="pass0"`). The dynamics-pass poses were adjusted by AddBiomechanics to agree with the measured forces, so they leak force information. [DETAILS.md](https://huggingface.co/datasets/kwonjoon/ForceBody/blob/main/DETAILS.md) on Hugging Face explains the leakage policy, the quality masks and the known issues.
 
 ## Quickstart
 
@@ -170,6 +114,68 @@ python visualize.py --npz ../../ForceBody/trials/Moore2015/S10/Moore2015_S10_wal
 Main options are `--skel_model` (default `$SKEL_MODEL_PATH`), `--out`, `--fps` (default 20), `--max-frames` (default 150) and `--realtime`. Outputs are a 1120x624 PNG and a 640x704 MP4. `code/VISUALIZATION.md` lists all options. The renderer draws the SKEL body coloured by `tau_selfconsistent` and GRF arrows at the centre of pressure.
 Rendering needs PyTorch, pyrender and the SKEL package and model. See `code/VISUALIZATION.md`.
 
+## What is in each trial
+
+One file per trial, `trials/<study>/S<NN>/<trial_uid>.npz`. The main fields are below. The full list (547 fields with dtype, shape, unit and frame) is in `SCHEMA_v1.3.csv` of the dataset release.
+
+| Field | Shape | Unit | Frame | Content |
+|---|---|---|---|---|
+| `poses` | `[T,46]` | rad | skel_world | SKEL pose fitted to the AddB kinematics pass (never saw the force plates) |
+| `trans` | `[T,3]` | m | skel_world | SKEL root translation of `poses` |
+| `joints` | `[T,24,3]` | m | skel_world | SKEL joint centres of `poses` |
+| `betas` | `[10]` | | | SKEL shape, one per person |
+| `skel_gender` | `scalar` | | | SKEL model used for the fit |
+| `poses_dyn`, `trans_dyn`, `joints_dyn` | `as above` | | skel_world | Second SKEL fit, to the AddB dynamics pass (force-aware) |
+| `q_kin`, `q_gt` | `[T,37]` | rad, m | addb_lab | AddB kinematics-pass and dynamics-pass joint angles (OpenSim Rajagopal DOFs) |
+| `grf_aligned` | `[T,C,3]` | N | skel_world | Measured ground reaction force per contact (0 = right foot, 1 = left foot, Falisse2017 also 2 = pelvis on an instrumented chair) |
+| `cop_aligned_foot` | `[T,C,3]` | m | skel_world | Centre of pressure per contact |
+| `contact_torque_aligned` | `[T,C,3]` | N m | skel_world | Free moment at the centre of pressure |
+| `tau_selfconsistent` | `[T,37]` | N m, N | addb_lab | Inverse-dynamics joint torque label |
+| `mu_tau`, `sigma_tau` | `[T,37]` | N m, N | addb_lab | Monte Carlo mean and standard deviation of the torque |
+| `grf_frame_ok`, `tau_frame_ok`, `mc_frame_ok` | `[T]` | | | Frame masks for GRF, torque and σ<sub>τ</sub> use |
+| `mass_kg`, `mass_kg_dynamics` | `scalar` | kg | | Recorded mass (model input) and dynamics mass (label normalization) |
+| `fps`, `fps_true_grid` | `scalar` | Hz | | Nominal and true frame rate |
+
+Trial-level metadata (study, activity, protocol, person, captions and quality flags) is in each file and in `manifest.csv`.
+
+Masked values are not NaN, so always apply the frame masks before training. Normalize GRF, torque and σ<sub>τ</sub> by `mass_kg_dynamics` only. A model that predicts forces or torques must take its motion input from the kinematics-pass pose set (`pose_source="pass0"`). The dynamics-pass poses were adjusted by AddBiomechanics to agree with the measured forces, so they leak force information. [DETAILS.md](https://huggingface.co/datasets/kwonjoon/ForceBody/blob/main/DETAILS.md) on Hugging Face explains the leakage policy, the quality masks and the known issues.
+
+## Demo gallery
+
+Each clip shows the SKEL body with motion-capture markers and GRF arrows at the centre of pressure.
+The right panel shows the measured vertical GRF per foot and one joint moment τ with the band τ ± σ<sub>τ</sub>.
+
+| Running | Stair ascent |
+|:---:|:---:|
+| <img src="assets/running_hamner2013.gif" width="100%"> | <img src="assets/stair_ascent_falisse2017.gif" width="100%"> |
+| **Sit-to-stand** | **Drop jump** |
+| <img src="assets/sit_to_stand_uhlrich2023.gif" width="100%"> | <img src="assets/drop_jump.gif" width="100%"> |
+| **Walking** | **Squat** |
+| <img src="assets/walking_uhlrich2023.gif" width="100%"> | <img src="assets/squat_li2021.gif" width="100%"> |
+| **Single-leg hop** | **Side stretch** |
+| <img src="assets/hop_han2023.gif" width="100%"> | <img src="assets/side_stretch_han2023.gif" width="100%"> |
+
+### Torque and uncertainty across activities
+
+Torque magnitude |τ| (left body in each pair) and torque uncertainty σ<sub>τ</sub> (right body) on six activities.
+
+<img src="assets/activities_grid_tau_sigma.gif" width="100%" alt="Six activities with the skeleton colored by torque magnitude and by torque uncertainty. Running, sit-to-stand, drop jump, tai chi, ballet jumps, soccer kick.">
+
+Higher-quality MP4 versions of every clip are in [`assets/`](assets/).
+
+### Paper figures as videos
+
+Animated versions of the paper figures, in [`assets/paper_figures/`](assets/paper_figures/).
+
+| Figure | Video |
+|:---|:---|
+| Fig. 2(b). Fourteen subjects at true metric scale with SKEL body, skeleton and GRF | [`fig2b_body_diversity.mp4`](assets/paper_figures/fig2b_body_diversity.mp4) |
+| Fig. 5. DOF acceleration, AddB vs. SKEL fit (walking, running, jumping) | [`fig5_dof_acceleration.mp4`](assets/paper_figures/fig5_dof_acceleration.mp4) |
+| Fig. 6. Torque and torque uncertainty across six activities | [`fig6_torque_uncertainty_activities.mp4`](assets/paper_figures/fig6_torque_uncertainty_activities.mp4) |
+| Fig. 7. Per-joint torque trajectories with the τ ± σ<sub>τ</sub> band (running, sit-to-stand) | [`fig7_torque_trajectories.mp4`](assets/paper_figures/fig7_torque_trajectories.mp4) |
+
+In the Fig. 2(b) video all fourteen subjects play a 2 s clip forward and then backward together, so the loop has no jump.
+
 ## Benchmark
 
 Two tasks predict forces from SKEL motion. T-τ predicts joint torques and T-GRF predicts per-foot ground reaction forces. The numbers below are from the camera-ready paper.
@@ -213,7 +219,7 @@ The benchmark card (`code/benchmark/BENCHMARK.md`), the machine-readable spec (`
 
 ## Dataset composition
 
-<img src="assets/dataset_stats.png" width="100%" alt="ForceBody dataset statistics">
+Distributions of BMI, body mass, height and activity are in Fig. 2 at the top of this page.
 
 | Study | Trials | Subjects | M / F / U | Height (m) | Mass (kg) | Main activity |
 |---|---:|---:|---|---|---|---|
