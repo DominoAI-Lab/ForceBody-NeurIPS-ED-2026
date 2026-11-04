@@ -155,26 +155,27 @@ The right panel shows the measured vertical GRF per foot and one joint moment τ
 | **Single-leg hop** | **Side stretch** |
 | <img src="assets/hop_han2023.gif" width="100%"> | <img src="assets/side_stretch_han2023.gif" width="100%"> |
 
-### Torque and uncertainty across activities
+### Torque and uncertainty across activities (paper Fig. 6)
 
-Torque magnitude |τ| (left body in each pair) and torque uncertainty σ<sub>τ</sub> (right body) on six activities.
+On each activity the front skeleton is colored by torque magnitude |τ| and the back skeleton by torque uncertainty σ<sub>τ</sub>, both in N m/kg. Green arrows are measured GRF.
 
-<img src="assets/activities_grid_tau_sigma.gif" width="100%" alt="Six activities with the skeleton colored by torque magnitude and by torque uncertainty. Running, sit-to-stand, drop jump, tai chi, ballet jumps, soccer kick.">
+<img src="assets/fig6_activities.gif" width="100%" alt="Fig. 6. Six activities with the front skeleton colored by torque magnitude and the back skeleton by torque uncertainty. Running, sit-to-stand, drop jump, tai chi, ballet high leg, soccer kick.">
 
-Higher-quality MP4 versions of every clip are in [`assets/`](assets/).
+### Fit quality at the acceleration level (paper Fig. 5)
 
-### Paper figures as videos
+Angular acceleration of four lower-limb DOFs from AddBiomechanics (black) and from the SKEL fit (orange) on walking, running and jumping. The cursor moves with the body above. Column titles give the trial MPJPE and the mean PCC over the four DOFs.
 
-Animated versions of the paper figures, in [`assets/paper_figures/`](assets/paper_figures/).
+<img src="assets/fig5_dof_acceleration.gif" width="100%" alt="Fig. 5. DOF angular acceleration, AddBiomechanics vs. SKEL fit, for walking, running and jumping, with the body moving above the curves.">
 
-| Figure | Video |
-|:---|:---|
-| Fig. 2(b). Fourteen subjects at true metric scale with SKEL body, skeleton and GRF | [`fig2b_body_diversity.mp4`](assets/paper_figures/fig2b_body_diversity.mp4) |
-| Fig. 5. DOF acceleration, AddB vs. SKEL fit (walking, running, jumping) | [`fig5_dof_acceleration.mp4`](assets/paper_figures/fig5_dof_acceleration.mp4) |
-| Fig. 6. Torque and torque uncertainty across six activities | [`fig6_torque_uncertainty_activities.mp4`](assets/paper_figures/fig6_torque_uncertainty_activities.mp4) |
-| Fig. 7. Per-joint torque trajectories with the τ ± σ<sub>τ</sub> band (running, sit-to-stand) | [`fig7_torque_trajectories.mp4`](assets/paper_figures/fig7_torque_trajectories.mp4) |
+### Torque consistency with the τ ± σ<sub>τ</sub> band (paper Fig. 7)
 
-In the Fig. 2(b) video all fourteen subjects play a 2 s clip forward and then backward together, so the loop has no jump.
+Hip, knee and ankle torque τ (black), the torque recomputed from the SKEL fit τ<sub>SKEL</sub> (red dashed) and the band τ ± σ<sub>τ</sub> (blue) on running and sit-to-stand, in N m/kg. Bones above are colored by |τ|.
+
+<img src="assets/fig7_running_sts.gif" width="100%" alt="Fig. 7. Hip, knee and ankle torque trajectories with the uncertainty band for running and sit-to-stand, with the torque-colored body moving above.">
+
+### MP4 files
+
+The GIFs above are compressed. Full-quality MP4 versions are in [`assets/paper_figures/`](assets/paper_figures/): [Fig. 2](assets/paper_figures/fig2_dataset.mp4), [Fig. 2(b)](assets/paper_figures/fig2b_body_diversity.mp4), [Fig. 5](assets/paper_figures/fig5_dof_acceleration.mp4), [Fig. 6](assets/paper_figures/fig6_torque_uncertainty_activities.mp4) and [Fig. 7](assets/paper_figures/fig7_torque_trajectories.mp4). MP4 versions of the demo gallery clips are in [`assets/`](assets/). In the Fig. 2(b) video all fourteen subjects play a 2 s clip forward and then backward together, so the loop has no jump.
 
 ## Benchmark
 
