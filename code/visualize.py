@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-ForceBody visualization (release 1.3.0, trial format v1.2): render a trial's SKEL body with GRF arrows seated on
+ForceBody visualization (release 1.4.0, trial format v1.2): render a trial's SKEL body with GRF arrows seated on
 the feet.
 
 Two modes:
@@ -16,7 +16,7 @@ POSE UNUSABLE.
 
 The body uses `skel_gender` and `betas`. The GRF arrow starts at the centre of pressure `cop_aligned_foot` (the
 measured CoP in the SKEL frame) and uses `grf_aligned`. The skeleton is coloured by `tau_selfconsistent`, the torque
-reproducible from the shipped fields (the AddB native torque `tau_gt_det` is not, see SCHEMA_v1.3.csv). The pelvis is
+reproducible from the shipped fields (the AddB native torque `tau_gt_det` is not, see SCHEMA_v1.4.csv). The pelvis is
 grey (its entry is the root residual). Foot arrows are green where `grf_foot_ok` and `cop_frame_ok` hold. The Falisse2017
 chair channel (`contact_bodies` == 'pelvis') is blue where `grf_frame_ok` holds (CHAIR_RGB). Arrows on
 masked frames are grey. The png frame is chosen among the `grf_frame_ok` frames when the trial has any.

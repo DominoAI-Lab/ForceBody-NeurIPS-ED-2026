@@ -65,9 +65,9 @@ raises `ValueError` in the loader (`build_bench_cache_v12.check_inputs`). The fi
 are also refused by name (`forcebody_io.LEAKY_INPUT_FIELDS`): the dynamics-pass pose set (`poses_dyn`, `trans_dyn`,
 `joints_dyn`, `addb_joints_dyn`, `q_gt`, `qd_gt`, `qdd_gt`), the labels (`tau_*`, `mu_tau`, `sigma_tau`, `percentiles`,
 `grf*`, `cop*`, `contact_*`, `grf_valid_mask`) and fields derived from the GRF (`mass_kg_grf`, `mass_dyn_scale`,
-`mass_kg_dynamics*`, `cadence_spm_grf`, `stride_time_s_med`, `duty_factor_*`, `support_side*`, `caption_support_side`,
+`mass_kg_dynamics*`, `cadence_spm_grf`, `stride_time_s_med`, `duty_factor_*`, `support_side*`,
 `floor_height_m`, `speed_belt_grf_mps`, `mass_dyn_used_kg`, `mass_kg_grf_*`, `chair_contact`, `floor_tilt_*`,
-`addb_belt_speed_mps`, `speed_mps`, `tilt_deg`, `mc_*`, `eval_*`, `t2m_*`, `s8b_*`, `qc_*`, the usability flags
+`addb_belt_speed_mps`, `speed_mps`, `tilt_deg`, `mc_*`, `eval_*`, `s8b_*`, `qc_*`, the usability flags
 including `q_gt_usable` and `usable_provisional`, `kin_frame_ok`, `gait_events.csv`). This denylist is a safety net and
 can be incomplete. Only the allowlist defines the valid inputs.
 

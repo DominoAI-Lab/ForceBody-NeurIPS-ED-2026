@@ -1,4 +1,4 @@
-"""ForceBody trial loader (release 1.3.0; trial format v1.2) with an explicit pose source (numpy only).
+"""ForceBody trial loader (release 1.4.0; trial format v1.2) with an explicit pose source (numpy only).
 
 ForceBody (since v1.2) ships two SKEL pose sets per trial (see DETAILS.md in the Hugging Face dataset repo, "Choosing a pose source"):
 
@@ -9,7 +9,7 @@ ForceBody (since v1.2) ships two SKEL pose sets per trial (see DETAILS.md in the
                       addb_joints_dyn                                        AddBiomechanics to agree with the measured GRF
 
 Default use: force / torque estimation and any model or metric that takes motion as input and predicts or scores forces
--> 'pass0'. Text-to-motion (motion only, or motion + GRF + torque) -> 'pass2'. Feeding 'pass2' kinematics to a model
+-> 'pass0'. Motion modelling (motion only, or motion + GRF + torque) -> 'pass2'. Feeding 'pass2' kinematics to a model
 that predicts or scores forces leaks the force labels into its input (DETAILS.md, "Leakage policy").
 
     import forcebody_io as fio
@@ -68,10 +68,10 @@ LEAKY_INPUT_FIELDS = ('poses_dyn', 'trans_dyn', 'joints_dyn', 'addb_joints_dyn',
                       'mu_tau', 'sigma_tau', 'percentiles', 'grf*', 'cop*', 'contact_*', 'grf_valid_mask',
                       # fields derived from the GRF
                       'mass_kg_grf', 'mass_dyn_scale', 'mass_kg_dynamics*', 'cadence_spm_grf', 'stride_time_s_med',
-                      'duty_factor_*', 'support_side*', 'caption_support_side', 'floor_height_m', 'speed_belt_grf_mps',
+                      'duty_factor_*', 'support_side*', 'floor_height_m', 'speed_belt_grf_mps',
                       'mass_dyn_used_kg', 'mass_kg_grf_*', 'chair_contact', 'floor_tilt_*', 'addb_belt_speed_mps',
                       'speed_mps', 'tilt_deg',
-                      'mc_*', 'eval_*', 't2m_*', 's8b_*', 'qc_*', 'force_label_usable*', 'torque_label_usable',
+                      'mc_*', 'eval_*', 's8b_*', 'qc_*', 'force_label_usable*', 'torque_label_usable',
                       'poses_dyn_usable*', 'q_gt_usable', 'usable_provisional', 'kin_frame_ok', 'gait_events',
                       # v1.2 fix rounds: every field of the dynamics-pass pose set (dyn_target_source follows the
                       # GRF-valid windows)
@@ -95,7 +95,7 @@ def is_leaky_field(name):
 
 
 def load_trial(npz_path, pose_source=None):
-    """Load one ForceBody trial (v1.2 trial format, release 1.2.x or 1.3.0) with the pose set chosen by `pose_source` (required: 'pass0'|'kin'|'pass2'|'dyn')."""
+    """Load one ForceBody trial (v1.2 trial format, release 1.2.x to 1.4.0) with the pose set chosen by `pose_source` (required: 'pass0'|'kin'|'pass2'|'dyn')."""
     src = canonical_pose_source(pose_source)
     with np.load(npz_path, allow_pickle=False) as z:
         raw = {k: z[k] for k in z.files}

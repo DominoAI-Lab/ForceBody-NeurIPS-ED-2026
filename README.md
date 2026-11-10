@@ -114,7 +114,7 @@ Rendering needs PyTorch, pyrender and the SKEL package and model. See `code/VISU
 
 ## What is in each trial
 
-One file per trial, `trials/<study>/S<NN>/<trial_uid>.npz`. The main fields are below. The full list (547 fields with dtype, shape, unit and frame) is in `SCHEMA_v1.3.csv` of the dataset release.
+One file per trial, `trials/<study>/S<NN>/<trial_uid>.npz`. The main fields are below. The full list (532 fields with dtype, shape, unit and frame) is in `SCHEMA_v1.4.csv` of the dataset release.
 
 | Field | Shape | Unit | Frame | Content |
 |---|---|---|---|---|
@@ -134,7 +134,7 @@ One file per trial, `trials/<study>/S<NN>/<trial_uid>.npz`. The main fields are 
 | `mass_kg`, `mass_kg_dynamics` | `scalar` | kg | | Recorded mass (model input) and dynamics mass (label normalization) |
 | `fps`, `fps_true_grid` | `scalar` | Hz | | Nominal and true frame rate |
 
-Trial-level metadata (study, activity, protocol, person, captions and quality flags) is in each file and in `manifest.csv`.
+Trial-level metadata (study, activity, protocol, person and quality flags) is in each file and in `manifest.csv`.
 
 Masked values are not NaN, so always apply the frame masks before training. Normalize GRF, torque and σ<sub>τ</sub> by `mass_kg_dynamics` only. A model that predicts forces or torques must take its motion input from the kinematics-pass pose set (`pose_source="pass0"`). The dynamics-pass poses were adjusted by AddBiomechanics to agree with the measured forces, so they leak force information. [DETAILS.md](https://huggingface.co/datasets/kwonjoon/ForceBody/blob/main/DETAILS.md) on Hugging Face explains the leakage policy, the quality masks and the known issues.
 
